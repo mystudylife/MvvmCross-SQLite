@@ -6,9 +6,6 @@
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 // THIS FILE FULLY ACKNOWLEDGES:
 
-
-
-
 // ReSharper disable all
 //
 // Copyright (c) 2009-2012 Krueger Systems, Inc.
@@ -35,7 +32,6 @@
 #if WINDOWS_PHONE && !USE_CSHARP_SQLITE
 #warning NOTE THAT THIS CODE NOW USES http://www.sqlite.org/download.html#wp8 NOT CSHARP_SQLITE
 #endif
-
 using System;
 using System.Globalization;
 using System.Collections.Generic;
@@ -1549,11 +1545,13 @@ namespace Community.SQLite
     /// <summary>
     /// Represents a parsed connection string.
     /// </summary>
-    class SQLiteConnectionString
+    public class SQLiteConnectionString
     {
         public string ConnectionString { get; private set; }
         public string DatabasePath { get; private set; }
-        public bool StoreDateTimeAsTicks { get; private set; }
+		public bool StoreDateTimeAsTicks { get; private set; }
+		
+		public SQLiteOpenFlags OpenFlags { get; private set; }
 
 #if NETFX_CORE
         static readonly string MetroStyleDataPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
@@ -1570,6 +1568,12 @@ namespace Community.SQLite
             DatabasePath = databasePath;
 #endif
         }
+
+	    public SQLiteConnectionString(string databasePath, SQLiteOpenFlags openFlags, bool storeDateTimeAsTicks)
+			: this(databasePath, storeDateTimeAsTicks) {
+
+		    this.OpenFlags = openFlags;
+	    }
     }
 
     public class TableMapping : ITableMapping
@@ -3387,6 +3391,98 @@ namespace Community.SQLite
             Null = 5
         }
     }
+
+	#region Async
+
+	public class SQLiteConnectionPool {
+		class Entry {
+			public SQLiteConnectionString ConnectionString { get; private set; }
+			public ISQLiteConnectionWithLock Connection { get; private set; }
+
+			public Entry(SQLiteConnectionString connectionString) {
+				ConnectionString = connectionString;
+				Connection = new SQLiteConnectionWithLock(connectionString);
+			}
+
+			public void OnApplicationSuspended() {
+				Connection.Dispose();
+				Connection = null;
+			}
+		}
+
+		readonly Dictionary<string, Entry> _entries = new Dictionary<string, Entry>();
+		readonly object _entriesLock = new object();
+
+		public ISQLiteConnectionWithLock GetConnection(SQLiteConnectionString connectionString) {
+			lock (_entriesLock) {
+				Entry entry;
+				string key = connectionString.ConnectionString;
+
+				if (!_entries.TryGetValue(key, out entry)) {
+					entry = new Entry(connectionString);
+					_entries[key] = entry;
+				}
+
+				return entry.Connection;
+			}
+		}
+
+		/// <summary>
+		/// Closes all connections managed by this pool.
+		/// </summary>
+		public void Reset() {
+			lock (_entriesLock) {
+				foreach (var entry in _entries.Values) {
+					entry.OnApplicationSuspended();
+				}
+				_entries.Clear();
+			}
+		}
+
+		/// <summary>
+		/// Call this method when the application is suspended.
+		/// </summary>
+		/// <remarks>Behaviour here is to close any open connections.</remarks>
+		public void ApplicationSuspended() {
+			Reset();
+		}
+	}
+
+	public class SQLiteConnectionWithLock : SQLiteConnection, ISQLiteConnectionWithLock {
+		readonly object _lockPoint = new object();
+
+		public SQLiteConnectionWithLock(string databasePath, bool storeDateTimeAsTicks = false)
+			: base(databasePath, storeDateTimeAsTicks) {
+			
+		}
+		public SQLiteConnectionWithLock(string databasePath, SQLiteOpenFlags openFlags, bool storeDateTimeAsTicks = false)
+			: base(databasePath, openFlags, storeDateTimeAsTicks) {
+		}
+
+		public SQLiteConnectionWithLock(SQLiteConnectionString connectionString)
+			: base(connectionString.DatabasePath, connectionString.OpenFlags, connectionString.StoreDateTimeAsTicks) {
+			
+		}
+
+		public IDisposable Lock() {
+			return new LockWrapper(_lockPoint);
+		}
+
+		private class LockWrapper : IDisposable {
+			object _lockPoint;
+
+			public LockWrapper(object lockPoint) {
+				_lockPoint = lockPoint;
+				Monitor.Enter(_lockPoint);
+			}
+
+			public void Dispose() {
+				Monitor.Exit(_lockPoint);
+			}
+		}
+	}
+
+	#endregion
 
 	public static class TypeExtensions {
 		public static bool IsNullableEnum(this Type t) {

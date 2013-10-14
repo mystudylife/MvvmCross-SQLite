@@ -20,6 +20,13 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite.Droid
             return CreateEx(address);
         }
 
+		// ReSharper disable once InconsistentNaming
+		static readonly ISQLiteConnectionPool _shared = new SQLiteConnectionPool();
+
+		public ISQLiteConnectionPool Shared {
+			get { return _shared; }
+		}
+
         public ISQLiteConnection CreateEx(string address, SQLiteConnectionOptions options = null)
         {
             options = options ?? new SQLiteConnectionOptions();
@@ -28,4 +35,19 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite.Droid
             return new SQLiteConnection(filePath, options.StoreDateTimeAsTicks);
         }
     }
+
+	public class SQLiteConnectionPool : global::Community.SQLite.SQLiteConnectionPool, ISQLiteConnectionPool {
+		#region Implementation of ISQLiteConnectionPool
+
+		public ISQLiteConnectionWithLock GetConnection(string address, SQLiteConnectionOptions options = null) {
+
+			options = options ?? new SQLiteConnectionOptions();
+			var path = options.BasePath ?? Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+			var filePath = Path.Combine(path, address);
+
+			return this.GetConnection(new SQLiteConnectionString(filePath, options.StoreDateTimeAsTicks));
+		}
+
+		#endregion
+	}
 }

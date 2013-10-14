@@ -32,6 +32,8 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
     public interface ISQLiteConnectionFactory
     {
         ISQLiteConnection Create(string address);
+
+		ISQLiteConnectionPool Shared { get; }
     }
 
     [Flags]
@@ -201,7 +203,7 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
         int Count(Expression<Func<T, bool>> predExpr);
 
-        IEnumerator<T> GetEnumerator();
+        new IEnumerator<T> GetEnumerator();
 
         T First();
 
@@ -799,4 +801,25 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
         void Close();
     }
+
+
+	#region Async / Connection Locking
+
+	public interface ISQLiteConnectionString {
+		string ConnectionString { get; }
+		string DatabasePath { get; }
+		bool StoreDateTimeAsTicks { get; }
+	}
+
+	public interface ISQLiteConnectionWithLock : ISQLiteConnection {
+		IDisposable Lock();
+	}
+
+	public interface ISQLiteConnectionPool {
+		ISQLiteConnectionWithLock GetConnection(string address, SQLiteConnectionOptions options = null);
+		void Reset();
+		void ApplicationSuspended();
+	}
+
+	#endregion
 }
