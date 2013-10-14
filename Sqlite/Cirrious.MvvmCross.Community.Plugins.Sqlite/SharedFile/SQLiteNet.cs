@@ -2869,7 +2869,7 @@ namespace Community.SQLite
                         var head = "";
                         foreach (var a in (System.Collections.IEnumerable)val)
                         {
-                            queryArgs.Add(a);
+                            queryArgs.Add((a is Guid) ? a.ToString() : a);
                             sb.Append(head);
                             sb.Append("?");
                             head = ",";
@@ -2883,7 +2883,7 @@ namespace Community.SQLite
                     }
                     else
                     {
-                        queryArgs.Add(val);
+						queryArgs.Add((val is Guid) ? val.ToString() : val);
                         return new CompileResult
                         {
                             CommandText = "?",
