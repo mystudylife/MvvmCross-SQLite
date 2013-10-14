@@ -768,6 +768,11 @@ namespace Community.SQLite
         public T Get<T>(object pk) where T : new()
         {
             var map = GetMapping(typeof(T));
+			
+			if (pk is Guid) {
+				pk = pk.ToString();
+			}
+
             return Query<T>(map.GetByPrimaryKeySql, pk).First();
         }
 
