@@ -806,6 +806,11 @@ namespace Community.SQLite
         public T Find<T>(object pk) where T : new()
         {
             var map = GetMapping(typeof(T));
+
+			if (pk is Guid) {
+				pk = pk.ToString();
+			}
+
             return Query<T>(map.GetByPrimaryKeySql, pk).FirstOrDefault();
         }
 
@@ -826,6 +831,12 @@ namespace Community.SQLite
         /// </returns>
         public object Find(object pk, TableMapping map)
         {
+			// SQLite stores a Guid as a string, querying without
+			// ToString() fails.
+	        if (pk is Guid) {
+		        pk = pk.ToString();
+	        }
+
             return Query(map, map.GetByPrimaryKeySql, pk).FirstOrDefault();
         }
 
