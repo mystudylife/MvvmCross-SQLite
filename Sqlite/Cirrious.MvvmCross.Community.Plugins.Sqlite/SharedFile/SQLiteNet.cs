@@ -1566,12 +1566,14 @@ namespace Community.SQLite
         {
             ConnectionString = databasePath;
             StoreDateTimeAsTicks = storeDateTimeAsTicks;
-
+			
 #if NETFX_CORE
             DatabasePath = System.IO.Path.Combine (MetroStyleDataPath, databasePath);
 #else
             DatabasePath = databasePath;
 #endif
+
+	        OpenFlags = SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create;
         }
 
 	    public SQLiteConnectionString(string databasePath, SQLiteOpenFlags openFlags, bool storeDateTimeAsTicks)

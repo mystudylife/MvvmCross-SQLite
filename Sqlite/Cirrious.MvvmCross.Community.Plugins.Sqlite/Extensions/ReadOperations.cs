@@ -22,24 +22,43 @@ namespace SQLiteNetExtensions.Extensions
             return element;
         }
 
-		public static ITableQuery<T> SetChildren<T>(this ITableQuery<T> query) where T : class, new() {
-			var element = query.FirstOrDefault();
+		/// <summary>
+		///		Executes the current <paramref name="query"/>
+		///		and enumerates it to a list.
+		/// </summary>
+		/// <remarks>
+		///		Warning. This method could cause serious performance
+		///		implications and should only be used for limited sets of data.
+		/// </remarks>
+		public static ICollection<T> WithChildren<T>(this ITableQuery<T> query) where T : new() {
+			List<T> results = query.ToList();
 
-			if (element != null) return query;
+// ReSharper disable once CompareNonConstrainedGenericWithNull
+			if (results.Count == 0) return results;
 
-			foreach (var relationshipProperty in typeof (T).GetRelationshipProperties()) {
+			query.Connection.SetChildren(results);
+
+			return results;
+		}
+
+	    public static void SetChildren<T>(this SQLiteConnection conn, IEnumerable<T> elements) where T : new() {
+		    if (elements is ITableQuery<T>) {
+			    throw new InvalidOperationException("Use WithChildren<T> or enumerate the query before calling SetChildren<T>.");
+		    }
+
+		    var results = elements as ICollection<T> ?? elements.ToList();
+
+			foreach (var relationshipProperty in typeof(T).GetRelationshipProperties()) {
 				var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
 
 				if (relationshipAttribute is ManyToOneAttribute) {
-					query.Connection.GetManyToOneChildren(query, relationshipProperty);
+					conn.GetManyToOneChildren(results, relationshipProperty);
 				}
 				else {
-					#warning only ManyToOne supported at the moment
+#warning only ManyToOne supported at the moment
 				}
 			}
-
-			return query;
-		}
+	    }
 
         public static void GetChildren<T>(this SQLiteConnection conn, ref T element) where T : new()
         {
@@ -168,7 +187,7 @@ namespace SQLiteNetExtensions.Extensions
             relationshipProperty.SetValue(element, value, null);
         }
 
-	    private static void GetManyToOneChildren<T>(this SQLiteConnection conn, IEnumerable<T> elements, PropertyInfo relationshipProperty) {
+	    private static void GetManyToOneChildren<T>(this SQLiteConnection conn, ICollection<T> elements, PropertyInfo relationshipProperty) where T : new() {
 
 			var type = typeof(T);
 			EnclosedType enclosedType;
@@ -186,10 +205,11 @@ namespace SQLiteNetExtensions.Extensions
 			var tableMapping = conn.GetMapping(entityType);
 			Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
 
-		    IEnumerable<object> foreignKeyValues = elements.Select(x => currentEntityForeignKeyProperty.GetValue(x, null)).ToList();
+			IEnumerable<object> foreignKeyValues = elements.Select(x => {
+				var fkPropVal = currentEntityForeignKeyProperty.GetValue(x, null);
 
-			StringBuilder sqlBuilder = new StringBuilder();
-		    var args = foreignKeyValues.Distinct().Select(x => x is Guid ? x.ToString() : x);
+				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
+			}).Distinct().ToList();
 			
 		    var foreignValues = conn.Query(
 				tableMapping,
@@ -199,11 +219,11 @@ namespace SQLiteNetExtensions.Extensions
 				    otherEntityPrimaryKeyProperty.GetColumnName(),
 				    String.Join(",", foreignKeyValues.Select(x => "?"))
 				),
-				args
+				foreignKeyValues.ToArray()
 			);
 
 		    foreach (var element in elements) {
-			    var foreignKeyValue = currentEntityForeignKeyProperty.GetValue(elements, null);
+				var foreignKeyValue = currentEntityForeignKeyProperty.GetValue(element, null);
 			    object value = null;
 
 			    if (foreignKeyValue != null) {
