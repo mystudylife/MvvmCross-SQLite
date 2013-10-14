@@ -168,7 +168,7 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
     public interface ITableMapping
     {
-        string TableName { get; }
+		string TableName { get; }
     }
 
     public interface ITableQuery<T> : IEnumerable<T> where T : new()
