@@ -36,6 +36,20 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="BaseClasses.cs" />
+    <Compile Include="Extensions\Attributes\ForeignKeyAttribute.cs" />
+    <Compile Include="Extensions\Attributes\ManyToManyAttribute.cs" />
+    <Compile Include="Extensions\Attributes\ManyToOneAttribute.cs" />
+    <Compile Include="Extensions\Attributes\OnDeleteAction.cs" />
+    <Compile Include="Extensions\Attributes\OneToManyAttribute.cs" />
+    <Compile Include="Extensions\Attributes\OneToOneAttribute.cs" />
+    <Compile Include="Extensions\Attributes\RelationshipAttribute.cs" />
+    <Compile Include="Extensions\Attributes\TextBlobAttribute.cs" />
+    <Compile Include="Extensions\ReadOperations.cs" />
+    <Compile Include="Extensions\ReflectionExtensions.cs" />
+    <Compile Include="Extensions\TextBlob\ITextBlobSerializer.cs" />
+    <Compile Include="Extensions\TextBlob\Serializers\JsonBlobSerializer.cs" />
+    <Compile Include="Extensions\TextBlob\TextBlobOperations.cs" />
+    <Compile Include="Extensions\WriteOperations.cs" />
     <Compile Include="PluginLoader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="packages.config" />
@@ -47,6 +61,12 @@
     </Reference>
     <Reference Include="Cirrious.MvvmCross.Localization">
       <HintPath>..\..\packages\MvvmCross.HotTuna.CrossCore.3.0.13\lib\portable-win+net45+MonoAndroid16+MonoTouch40+sl40+wp71\Cirrious.MvvmCross.Localization.dll</HintPath>
+    </Reference>
+    <Reference Include="Cirrious.MvvmCross.Plugins.Json">
+      <HintPath>..\..\packages\MvvmCross.HotTuna.Plugin.Json.3.0.13\lib\portable-win+net45+MonoAndroid16+MonoTouch40+sl40+wp71\Cirrious.MvvmCross.Plugins.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\packages\MvvmCross.HotTuna.Plugin.Json.3.0.13\lib\portable-win+net45+MonoAndroid16+MonoTouch40+sl40+wp71\Newtonsoft.Json.dll</HintPath>
     </Reference>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />
