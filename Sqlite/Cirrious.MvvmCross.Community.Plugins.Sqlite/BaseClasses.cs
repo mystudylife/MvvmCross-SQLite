@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
@@ -45,124 +46,227 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         AutoIncPK = 4      // force PK field to be auto inc
     }
 
-    public class ColumnInfo
-    {
-        //			public int cid { get; set; }
+	public class ColumnInfo {
+		//			public int cid { get; set; }
 
-        [Column("name")]
-        public string Name { get; set; }
+		[Column("name")]
+		public string Name { get; set; }
 
-        //			[Column ("type")]
-        //			public string ColumnType { get; set; }
+		//			[Column ("type")]
+		//			public string ColumnType { get; set; }
 
-        //			public int notnull { get; set; }
+		//			public int notnull { get; set; }
 
-        //			public string dflt_value { get; set; }
+		//			public string dflt_value { get; set; }
 
-        //			public int pk { get; set; }
+		//			public int pk { get; set; }
 
-        public override string ToString()
-        {
-            return Name;
-        }
-    }
+		public override string ToString() {
+			return Name;
+		}
+	}
 
-    public class CreateTablesResult
-    {
-        public Dictionary<Type, int> Results { get; private set; }
+	public class BaseAttribute : Attribute {
+		public static bool IsDefined(Type attributeType, Object instance) {
+			if (instance == null) {
+				return false;
+			}
 
-        public CreateTablesResult()
-        {
-            this.Results = new Dictionary<Type, int>();
-        }
-    }
+			return IsDefined(attributeType, instance.GetType());
+		}
 
-    [AttributeUsage(AttributeTargets.Class)]
-    public class TableAttribute : Attribute
-    {
-        public string Name { get; set; }
+		public static bool IsDefined(Type attributeType, Type instanceType) {
+			foreach (var p in instanceType.GetProperties()) {
 
-        public TableAttribute(string name)
-        {
-            Name = name;
-        }
-    }
+				var attributes = p.GetCustomAttributes(attributeType, true);
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class ColumnAttribute : Attribute
-    {
-        public string Name { get; set; }
+				var isDefined = attributes.Any();
 
-        public ColumnAttribute(string name)
-        {
-            Name = name;
-        }
-    }
+				if (isDefined)
+					return true;
+			}
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class PrimaryKeyAttribute : Attribute
-    {
-    }
+			return false;
+		}
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class AutoIncrementAttribute : Attribute
-    {
-    }
+		public static object GetValueOfProperty<TAttribute>(object instance) where TAttribute : Attribute {
+			Type attributeType = typeof(TAttribute);
+			foreach (var p in instance.GetType().GetProperties()) {
+				var attributes = p.GetCustomAttributes(attributeType, true);
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class IndexedAttribute : Attribute
-    {
-        public string Name { get; set; }
-        public int Order { get; set; }
-        public virtual bool Unique { get; set; }
+				var isDefined = attributes.Any();
 
-        public IndexedAttribute()
-        {
-        }
+				if (isDefined)
+					return p.GetValue(instance, null);
+			}
 
-        public IndexedAttribute(string name, int order)
-        {
-            Name = name;
-            Order = order;
-        }
-    }
+			return null;
+		}
+	}
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class IgnoreAttribute : Attribute
-    {
-    }
+	[AttributeUsage(AttributeTargets.Class)]
+	public class TableAttribute : BaseAttribute {
+		public string Name { get; set; }
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class UniqueAttribute : IndexedAttribute
-    {
-        public override bool Unique
-        {
-            get { return true; }
-            set { /* throw?  */ }
-        }
-    }
+		public TableAttribute(string name) {
+			Name = name;
+		}
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class MaxLengthAttribute : Attribute
-    {
-        public int Value { get; private set; }
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(TableAttribute), value);
+		}
+	}
 
-        public MaxLengthAttribute(int length)
-        {
-            Value = length;
-        }
-    }
+	[AttributeUsage(AttributeTargets.Property)]
+	public class ColumnAttribute : BaseAttribute {
+		public string Name { get; set; }
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class CollationAttribute : Attribute
-    {
-        public string Value { get; private set; }
+		public ColumnAttribute(string name) {
+			Name = name;
+		}
 
-        public CollationAttribute(string collation)
-        {
-            Value = collation;
-        }
-    }
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(ColumnAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class PrimaryKeyAttribute : BaseAttribute {
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(PrimaryKeyAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class One2ManyAttribute : BaseAttribute {
+		public One2ManyAttribute(Type type) {
+			Value = type;
+		}
+
+		public Type Value { get; set; }
+
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(One2ManyAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class LazyAttribute : BaseAttribute {
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(LazyAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class One2OneAttribute : BaseAttribute {
+		public One2OneAttribute(Type type) {
+			Value = type;
+		}
+
+		public Type Value { get; set; }
+
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(One2OneAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class AutoIncrementAttribute : Attribute {
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class IndexedAttribute : Attribute {
+		public string Name { get; set; }
+		public int Order { get; set; }
+		public virtual bool Unique { get; set; }
+
+		public IndexedAttribute() {
+		}
+
+		public IndexedAttribute(string name, int order) {
+			Name = name;
+			Order = order;
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class IgnoreAttribute : Attribute {
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class InitializedAttribute : BaseAttribute {
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(InitializedAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class OnUpdateCascadeAttribute : Attribute {
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class OnDeleteCascadeAttribute : Attribute {
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class ForeignKeyAttribute : Attribute {
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class UniqueAttribute : IndexedAttribute {
+		public override bool Unique {
+			get { return true; }
+			set { /* throw?  */ }
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class MaxLengthAttribute : Attribute {
+		public int Value { get; private set; }
+
+		public MaxLengthAttribute(int length) {
+			Value = length;
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class ReferencesAttribute : BaseAttribute {
+		public string Value { get; private set; }
+
+		public Type ObjType { get; private set; }
+
+		public ReferencesAttribute(Type parentObjectType) {
+			Value = SetReferenceName(parentObjectType);
+			ObjType = parentObjectType;
+		}
+
+		private string SetReferenceName(Type t) {
+			string result = t.Name;
+
+			foreach (var p in t.GetProperties()) {
+				var pk = p.GetCustomAttributes (typeof(PrimaryKeyAttribute), true).Any();
+
+				if (pk)
+					result += string.Format("({0})", p.Name);
+			}
+
+			return result;
+
+		}
+
+		public static bool IsDefined(object value) {
+			return IsDefined(typeof(One2OneAttribute), value);
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Property)]
+	public class CollationAttribute : Attribute {
+		public string Value { get; private set; }
+
+		public CollationAttribute(string collation) {
+			Value = collation;
+		}
+	}
 
     public interface ITableMapping
     {
@@ -201,8 +305,6 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
         int Count(Expression<Func<T, bool>> predExpr);
 
-        IEnumerator<T> GetEnumerator();
-
         T First();
 
         T FirstOrDefault();
@@ -214,13 +316,13 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
         int ExecuteNonQuery();
 
-        IEnumerable<T> ExecuteDeferredQuery<T>();
+		IEnumerable<T> ExecuteDeferredQuery<T>() where T : new();
 
-        List<T> ExecuteQuery<T>();
+		List<T> ExecuteQuery<T>() where T : new();
 
-        List<T> ExecuteQuery<T>(ITableMapping map);
+		List<T> ExecuteQuery<T>(ITableMapping map) where T : new();
 
-        IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map);
+		IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map) where T : new();
 
         T ExecuteScalar<T>();
 
@@ -247,6 +349,13 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         /// The handler will sleep multiple times until a total time of <see cref="BusyTimeout"/> has accumulated.
         /// </summary>
         TimeSpan BusyTimeout { get; set; }
+
+	    /// <summary>
+	    /// Set the enforcement of foreign key contraints
+	    /// </summary>
+	    /// <param name="flag"><c>true</c> enforces contraints; otherwise contraints are not enforced.</param>
+	    /// <returns></returns>
+	    ISQLiteConnection SetForeignKeysPermissions(bool flag);
 
         /// <summary>
         /// Retrieves the mapping that is automatically generated for the given type.
