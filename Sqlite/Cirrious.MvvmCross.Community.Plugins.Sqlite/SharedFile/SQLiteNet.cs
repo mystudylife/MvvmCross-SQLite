@@ -2775,12 +2775,15 @@ namespace Community.SQLite
             else if (expr.NodeType == ExpressionType.Constant)
             {
                 var c = (ConstantExpression)expr;
-                queryArgs.Add(c.Value);
-                return new CompileResult
-                {
-                    CommandText = "?",
-                    Value = c.Value
-                };
+
+				if (c.Value != null) {
+					queryArgs.Add(c.Value);
+	            }
+
+		        return new CompileResult {
+			        CommandText = "?",
+			        Value = c.Value
+		        };
             }
             else if (expr.NodeType == ExpressionType.Convert)
             {
@@ -2917,9 +2920,9 @@ namespace Community.SQLite
         private string CompileNullBinaryExpression(BinaryExpression expression, CompileResult parameter)
         {
             if (expression.NodeType == ExpressionType.Equal)
-                return "(" + parameter.CommandText + " is ?)";
+                return "(" + parameter.CommandText + " is null)";
             else if (expression.NodeType == ExpressionType.NotEqual)
-                return "(" + parameter.CommandText + " is not ?)";
+                return "(" + parameter.CommandText + " is not null)";
             else
                 throw new NotSupportedException("Cannot compile Null-BinaryExpression with type " + expression.NodeType.ToString());
         }
