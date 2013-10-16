@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
 using SQLiteNetExtensions.Attributes;
 using SQLiteNetExtensions.Extensions.TextBlob;
 
@@ -54,9 +55,14 @@ namespace SQLiteNetExtensions.Extensions
 				if (relationshipAttribute is ManyToOneAttribute) {
 					conn.GetManyToOneChildren(results, relationshipProperty);
 				}
-				else {
-#warning only ManyToOne supported at the moment
+				else if (relationshipAttribute is OneToManyAttribute) {
+					conn.GetOneToManyChildren(results, relationshipProperty);
 				}
+#if DEBUG
+				else {
+					Debug.WriteLine("WARNING: RelationshipAttribute {0} is not yet supported by WithChildren or SetChildren.", relationshipAttribute.GetType().Name);
+				}
+#endif
 			}
 	    }
 
@@ -209,7 +215,7 @@ namespace SQLiteNetExtensions.Extensions
 				var fkPropVal = currentEntityForeignKeyProperty.GetValue(x, null);
 
 				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
-			}).Distinct().ToList();
+			}).Where(x => x != null).Distinct().ToList();
 			
 		    var foreignValues = conn.Query(
 				tableMapping,
@@ -295,6 +301,80 @@ namespace SQLiteNetExtensions.Extensions
                 }
             }
         }
+
+		private static void GetOneToManyChildren<T>(this SQLiteConnection conn, ICollection<T> elements,
+													PropertyInfo relationshipProperty) {
+			var type = typeof(T);
+			EnclosedType enclosedType;
+			var entityType = relationshipProperty.GetEntityType(out enclosedType);
+
+			Debug.Assert(enclosedType != EnclosedType.None, "OneToMany relationship must be a List or Array");
+
+			var currentEntityPrimaryKeyProperty = type.GetPrimaryKey();
+			Debug.Assert(currentEntityPrimaryKeyProperty != null, "OneToMany relationship origin must have Primary Key");
+
+			var otherEntityForeignKeyProperty = type.GetForeignKeyProperty(relationshipProperty, inverse: true);
+			Debug.Assert(otherEntityForeignKeyProperty != null,
+						 "OneToMany relationship destination must have Foreign Key to the origin class");
+
+			var tableMapping = conn.GetMapping(entityType);
+			Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
+
+			var inverseProperty = type.GetInverseProperty(relationshipProperty);
+
+			IEnumerable<object> primaryKeyValues = elements.Select(x => {
+				var fkPropVal = currentEntityPrimaryKeyProperty.GetValue(x, null);
+
+				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
+			}).Where(x => x != null).Distinct().ToList();
+
+			var children = conn.Query(
+				tableMapping,
+				String.Format(
+					"select * from \"{0}\" where \"{1}\" IN ({2})",
+					entityType.GetTableName(),
+					otherEntityForeignKeyProperty.GetColumnName(),
+					String.Join(",", primaryKeyValues.Select(x => "?"))
+				),
+				primaryKeyValues.ToArray()
+			);
+
+			foreach (var element in elements) {
+				var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
+
+				var queryResults = children.Where(x => otherEntityForeignKeyProperty.GetValue(x, null).Equals(primaryKeyValue)).ToList();
+				
+				IEnumerable values = null;
+
+				if (primaryKeyValue != null) {
+					if (enclosedType == EnclosedType.List) {
+						// Create a generic list of the expected type
+						var list = (IList) Activator.CreateInstance(typeof (List<>).MakeGenericType(entityType));
+						foreach (var result in queryResults) {
+							list.Add(result);
+						}
+						values = list;
+					}
+					else {
+						// Create a generic list of the expected type
+						var array = Array.CreateInstance(entityType, queryResults.Count);
+						for (var i = 0; i < queryResults.Count; i++) {
+							array.SetValue(queryResults[i], i);
+						}
+						values = array;
+					}
+				}
+
+				relationshipProperty.SetValue(element, values, null);
+
+				if (inverseProperty != null && values != null) {
+					// Stablish inverse relationships (we already have that object anyway)
+					foreach (var value in values) {
+						inverseProperty.SetValue(value, element, null);
+					}
+				}
+			}
+		}
 
         private static void GetManyToManyChildren<T>(this SQLiteConnection conn, ref T element,
                                                      PropertyInfo relationshipProperty)

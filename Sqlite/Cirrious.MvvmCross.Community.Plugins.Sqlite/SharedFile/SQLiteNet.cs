@@ -266,7 +266,6 @@ namespace Community.SQLite
                 }
             }
         }
-
         /// <summary>
         /// Returns the mappings from types to tables that the connection
         /// currently understands.
@@ -278,6 +277,21 @@ namespace Community.SQLite
                 return _tables != null ? _tables.Values.Select(x => (ITableMapping)x) : Enumerable.Empty<ITableMapping>();
             }
         }
+
+		/// <summary>
+		/// Set the enforcement of foreign key constraints
+		/// </summary>
+		/// <param name="flag"><c>true</c> enforces constraints; otherwise constraints are not enforced.</param>
+		/// <returns></returns>
+		public SQLiteConnection SetForeignKeysPermissions(bool flag) {
+			if (flag)
+				this.Execute("PRAGMA foreign_keys = ON;");
+			if (!flag)
+				this.Execute("PRAGMA foreign_keys = OFF;");
+
+			return this;
+		}
+
 
         /// <summary>
         /// Retrieves the mapping that is automatically generated for the given type.
@@ -446,6 +460,7 @@ namespace Community.SQLite
 
             return count;
         }
+
 
         /// <summary>
         /// Creates an index for the specified table and column.
@@ -2900,7 +2915,7 @@ namespace Community.SQLite
                         };
                     }
                     else
-                    {
+					{
 						queryArgs.Add((val is Guid) ? val.ToString() : val);
                         return new CompileResult
                         {

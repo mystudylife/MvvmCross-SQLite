@@ -194,6 +194,14 @@ namespace SQLiteNetExtensions.Extensions
                     select property).FirstOrDefault();
         }
 
+	    public static string GetTableName(this Type type) {
+		    var attribute = (TableAttribute) type.GetCustomAttributes(typeof(TableAttribute), true).SingleOrDefault();
+
+			if (attribute == null) return type.Name;
+
+			return attribute.Name;
+	    }
+
 	    public static string GetColumnName(this PropertyInfo propertyInfo) {
 		    var attribute = propertyInfo.GetAttribute<ColumnAttribute>();
 
