@@ -265,9 +265,9 @@ namespace SQLiteNetExtensions.Extensions
             var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
             if (primaryKeyValue != null)
             {
-                var query = string.Format("select * from {0} where {1} = ?", entityType.Name,
-                                          otherEntityForeignKeyProperty.Name);
-                var queryResults = conn.Query(tableMapping, query, primaryKeyValue);
+                var query = string.Format("select * from {0} where {1} = ?", entityType.GetTableName(),
+                                          otherEntityForeignKeyProperty.GetColumnName());
+                var queryResults = conn.Query(tableMapping, query, primaryKeyValue is Guid ? primaryKeyValue.ToString() : primaryKeyValue);
                 if (enclosedType == EnclosedType.List)
                 {
                     // Create a generic list of the expected type
