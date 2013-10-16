@@ -120,15 +120,19 @@ namespace SQLiteNetExtensions.Extensions
                 }
             }
 
+			string tableName = entityType.GetTableName();
+			string inverseForeignKeyName = inverseForeignKeyProperty.GetColumnName();
+			string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
+
             // Objects already updated, now change the database
             var childrenKeys = string.Join(",", childrenKeyList);
             var query = string.Format("update {0} set {1} = ? where {2} in ({3})",
-                                      entityType.Name, inverseForeignKeyProperty.Name, inversePrimaryKeyProperty.Name, childrenKeys);
+									  tableName, inverseForeignKeyName, inversePrimaryKeyName, childrenKeys);
             conn.Execute(query, keyValue);
 
             // Delete previous relationships
             var deleteQuery = string.Format("update {0} set {1} = NULL where {1} == ? and {2} not in ({3})",
-                                            entityType.Name, inverseForeignKeyProperty.Name, inversePrimaryKeyProperty.Name, childrenKeys);
+											tableName, inverseForeignKeyName, inversePrimaryKeyName, childrenKeys);
             conn.Execute(deleteQuery, keyValue);
         }
 
@@ -180,15 +184,18 @@ namespace SQLiteNetExtensions.Extensions
 
 
             // Objects already updated, now change the database
-            if (inverseForeignKeyProperty != null && inversePrimaryKeyProperty != null)
-            {
+            if (inverseForeignKeyProperty != null && inversePrimaryKeyProperty != null) {
+	            string tableName = entityType.GetTableName();
+	            string inverseForeignKeyName = inverseForeignKeyProperty.GetColumnName();
+	            string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
+
                 var query = string.Format("update {0} set {1} = ? where {2} == ?",
-                                          entityType.Name, inverseForeignKeyProperty.Name, inversePrimaryKeyProperty.Name);
+										  tableName, inverseForeignKeyName, inversePrimaryKeyName);
                 conn.Execute(query, keyValue, childKey);
 
                 // Delete previous relationships
                 var deleteQuery = string.Format("update {0} set {1} = NULL where {1} == ? and {2} not in ({3})",
-                                                entityType.Name, inverseForeignKeyProperty.Name, inversePrimaryKeyProperty.Name, childKey ?? "");
+												tableName, inverseForeignKeyName, inversePrimaryKeyName, childKey ?? "");
                 conn.Execute(deleteQuery, keyValue);
             }
         }
