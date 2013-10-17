@@ -6,6 +6,9 @@
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 // THIS FILE FULLY ACKNOWLEDGES:
 
+using System.Text;
+using SQLiteNetExtensions.Attributes;
+using SQLiteNetExtensions.Extensions;
 // ReSharper disable all
 //
 // Copyright (c) 2009-2012 Krueger Systems, Inc.
@@ -283,13 +286,11 @@ namespace Community.SQLite
 		/// </summary>
 		/// <param name="flag"><c>true</c> enforces constraints; otherwise constraints are not enforced.</param>
 		/// <returns></returns>
-		public SQLiteConnection SetForeignKeysPermissions(bool flag) {
+		public void SetForeignKeysPermissions(bool flag) {
 			if (flag)
 				this.Execute("PRAGMA foreign_keys = ON;");
 			if (!flag)
 				this.Execute("PRAGMA foreign_keys = OFF;");
-
-			return this;
 		}
 
 
@@ -411,6 +412,7 @@ namespace Community.SQLite
             var decls = map.Columns.Select(p => Orm.SqlDecl(p, StoreDateTimeAsTicks));
             var decl = string.Join(",\n", decls.ToArray());
             query += decl;
+	        query += Orm.SqlForeignKeyDecl(map);
             query += ")";
 
             var count = Execute(query);
@@ -460,7 +462,6 @@ namespace Community.SQLite
 
             return count;
         }
-
 
         /// <summary>
         /// Creates an index for the specified table and column.
@@ -1892,6 +1893,42 @@ namespace Community.SQLite
 
             return decl;
         }
+
+		#region Foreign Key Quick Hack
+
+		// This is really crap, it's referencing things that are supposed to be standalone extensions
+
+	    public static string SqlForeignKeyDecl(TableMapping tableMapping) {
+			var foreignKeys = 
+#if !NETFX_CORE
+				from p in tableMapping.MappedType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+#else
+				from p in tableMapping.MappedType.GetRuntimeProperties()
+#endif
+				where p.GetAttribute<ForeignKeyAttribute>() != null
+				select p;
+
+			List<string> decls = new List<string>();
+
+		    foreach (var fk in foreignKeys) {
+			    var attribute = fk.GetAttribute<ForeignKeyAttribute>();
+
+				decls.Add(String.Format(
+					"FOREIGN KEY ({0}) REFERENCES {1}({2})", fk.GetColumnName(), attribute.ForeignType.GetTableName(), attribute.ForeignType.GetPrimaryKey().GetColumnName()
+					)
+				);
+		    }
+
+		    string result = String.Join(", \n", decls);
+
+		    if (!String.IsNullOrEmpty(result)) {
+			    result = String.Concat(", \n", result);
+		    }
+
+		    return result;
+	    }
+
+		#endregion
 
         public static string SqlType(TableMapping.Column p, bool storeDateTimeAsTicks)
         {

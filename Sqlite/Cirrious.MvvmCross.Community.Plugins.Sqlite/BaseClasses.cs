@@ -250,6 +250,13 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         /// </summary>
         TimeSpan BusyTimeout { get; set; }
 
+	    /// <summary>
+	    /// Set the enforcement of foreign key constraints
+	    /// </summary>
+	    /// <param name="flag"><c>true</c> enforces constraints; otherwise constraints are not enforced.</param>
+	    /// <returns></returns>
+	    void SetForeignKeysPermissions(bool flag);
+
         /// <summary>
         /// Retrieves the mapping that is automatically generated for the given type.
         /// </summary>
