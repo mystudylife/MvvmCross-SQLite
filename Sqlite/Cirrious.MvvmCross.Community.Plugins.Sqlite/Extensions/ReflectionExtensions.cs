@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using Cirrious.MvvmCross.Community.Plugins.Sqlite.Extensions.Attributes;
 using SQLiteNetExtensions.Attributes;
 using Cirrious.MvvmCross.Community.Plugins.Sqlite;
 
@@ -208,6 +209,23 @@ namespace SQLiteNetExtensions.Extensions
 		    if (attribute == null) return propertyInfo.Name;
 
 		    return attribute.Name;
+	    }
+
+	    public static PropertyInfo GetSoftDeleteColumn(this Type type) {
+
+		    var column = (from property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+			    where property.GetAttribute<SoftDeleteAttribute>() != null
+			    select property).SingleOrDefault();
+
+		    if (column == null) return null;
+
+		    if (!(column.PropertyType == typeof (bool) || column.PropertyType == typeof (DateTime?))) {
+				Debug.Assert(true, "SoftDeleteColumn property type must be a nullable datetime or boolean.");
+
+				return null;
+		    }
+
+			return column;
 	    }
     }
 }

@@ -43,6 +43,7 @@
     <Compile Include="Extensions\Attributes\OneToManyAttribute.cs" />
     <Compile Include="Extensions\Attributes\OneToOneAttribute.cs" />
     <Compile Include="Extensions\Attributes\RelationshipAttribute.cs" />
+    <Compile Include="Extensions\Attributes\SoftDeleteColumnAttribute.cs" />
     <Compile Include="Extensions\Attributes\TextBlobAttribute.cs" />
     <Compile Include="Extensions\ReadOperations.cs" />
     <Compile Include="Extensions\ReflectionExtensions.cs" />

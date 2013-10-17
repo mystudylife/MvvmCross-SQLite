@@ -188,6 +188,10 @@ namespace SQLiteNetExtensions.Extensions
             if (foreignKeyValue != null)
             {
                 value = conn.Find(foreignKeyValue, tableMapping);
+
+	            if (IsSoftDeleted(entityType, value)) {
+		            value = null;
+	            }
             }
 
             relationshipProperty.SetValue(element, value, null);
@@ -217,14 +221,22 @@ namespace SQLiteNetExtensions.Extensions
 				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
 			}).Where(x => x != null).Distinct().ToList();
 			
+			var query = String.Format(
+				"select * from \"{0}\" where \"{1}\" IN ({2})",
+				tableMapping.TableName,
+				otherEntityPrimaryKeyProperty.GetColumnName(),
+				String.Join(",", foreignKeyValues.Select(x => "?"))
+			);
+
+			var softDeleteSql = GetSoftDeleteFilterSql(entityType);
+
+			if (softDeleteSql != null) {
+				query = String.Concat(query, " AND ", softDeleteSql);
+			}
+
 		    var foreignValues = conn.Query(
 				tableMapping,
-			    String.Format(
-				    "select * from \"{0}\" where \"{1}\" IN ({2})",
-				    tableMapping.TableName,
-				    otherEntityPrimaryKeyProperty.GetColumnName(),
-				    String.Join(",", foreignKeyValues.Select(x => "?"))
-				),
+				query,
 				foreignKeyValues.ToArray()
 			);
 
@@ -255,7 +267,6 @@ namespace SQLiteNetExtensions.Extensions
             var otherEntityForeignKeyProperty = type.GetForeignKeyProperty(relationshipProperty, inverse: true);
             Debug.Assert(otherEntityForeignKeyProperty != null,
                          "OneToMany relationship destination must have Foreign Key to the origin class");
-
             var tableMapping = conn.GetMapping(entityType);
             Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
 
@@ -267,6 +278,13 @@ namespace SQLiteNetExtensions.Extensions
             {
                 var query = string.Format("select * from {0} where {1} = ?", entityType.GetTableName(),
                                           otherEntityForeignKeyProperty.GetColumnName());
+
+				var softDeleteSql = GetSoftDeleteFilterSql(entityType);
+
+				if (softDeleteSql != null) {
+					query = String.Concat(query, " AND ", softDeleteSql);
+				}
+
                 var queryResults = conn.Query(tableMapping, query, primaryKeyValue is Guid ? primaryKeyValue.ToString() : primaryKeyValue);
                 if (enclosedType == EnclosedType.List)
                 {
@@ -328,14 +346,22 @@ namespace SQLiteNetExtensions.Extensions
 				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
 			}).Where(x => x != null).Distinct().ToList();
 
+			var query = String.Format(
+				"select * from \"{0}\" where \"{1}\" IN ({2})",
+				entityType.GetTableName(),
+				otherEntityForeignKeyProperty.GetColumnName(),
+				String.Join(",", primaryKeyValues.Select(x => "?"))
+			);
+
+			var softDeleteSql = GetSoftDeleteFilterSql(entityType);
+
+			if (softDeleteSql != null) {
+				query = String.Concat(query, " AND ", softDeleteSql);
+			}
+
 			var children = conn.Query(
 				tableMapping,
-				String.Format(
-					"select * from \"{0}\" where \"{1}\" IN ({2})",
-					entityType.GetTableName(),
-					otherEntityForeignKeyProperty.GetColumnName(),
-					String.Join(",", primaryKeyValues.Select(x => "?"))
-				),
+				query,
 				primaryKeyValues.ToArray()
 			);
 
@@ -437,5 +463,38 @@ namespace SQLiteNetExtensions.Extensions
             relationshipProperty.SetValue(element, values, null);
 
         }
+
+	    private static string GetSoftDeleteFilterSql(Type entityType) {
+			var entitySoftDeleteColumn = entityType.GetSoftDeleteColumn();
+
+		    if (entitySoftDeleteColumn == null) return null;
+
+			if (entitySoftDeleteColumn.PropertyType == typeof(DateTime?)) {
+				return String.Format("{0} IS NULL", entitySoftDeleteColumn.GetColumnName());
+			}
+			if (entitySoftDeleteColumn.PropertyType == typeof (bool)) {
+				return String.Format("{0} = 0", entitySoftDeleteColumn.GetColumnName());
+			}
+
+			Debug.Assert(true, "SoftDeleteColumn property type must be a nullable datetime or boolean.");
+
+		    return null;
+	    }
+
+	    private static bool IsSoftDeleted(Type entityType, object value) {
+		    var softDeleteColumn = entityType.GetSoftDeleteColumn();
+
+	        if (softDeleteColumn != null && value != null) {
+		        if (softDeleteColumn.PropertyType == typeof (DateTime?)) {
+			        return !((DateTime?) softDeleteColumn.GetValue(value, null)).HasValue;
+		        }
+
+		        if (softDeleteColumn.PropertyType == typeof (bool)) {
+			        return (bool) softDeleteColumn.GetValue(value, null);
+		        }
+	        }
+
+		    return false;
+	    }
     }
 }
