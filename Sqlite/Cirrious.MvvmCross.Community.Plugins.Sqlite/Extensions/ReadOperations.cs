@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Xml.Linq;
 using SQLiteNetExtensions.Attributes;
 using SQLiteNetExtensions.Extensions.TextBlob;
 
@@ -286,26 +285,8 @@ namespace SQLiteNetExtensions.Extensions
 				}
 
                 var queryResults = conn.Query(tableMapping, query, primaryKeyValue is Guid ? primaryKeyValue.ToString() : primaryKeyValue);
-                if (enclosedType == EnclosedType.List)
-                {
-                    // Create a generic list of the expected type
-                    var list = (IList) Activator.CreateInstance(typeof (List<>).MakeGenericType(entityType));
-                    foreach (var result in queryResults)
-                    {
-                        list.Add(result);
-                    }
-                    values = list;
-                }
-                else
-                {
-                    // Create a generic list of the expected type
-                    var array = Array.CreateInstance(entityType, queryResults.Count);
-                    for (var i = 0; i < queryResults.Count; i++)
-                    {
-                        array.SetValue(queryResults[i], i);
-                    }
-                    values = array;
-                }
+
+	            values = CreateEnclosedType(entityType, enclosedType, queryResults);
             }
 
             relationshipProperty.SetValue(element, values, null);
@@ -373,22 +354,7 @@ namespace SQLiteNetExtensions.Extensions
 				IEnumerable values = null;
 
 				if (primaryKeyValue != null) {
-					if (enclosedType == EnclosedType.List) {
-						// Create a generic list of the expected type
-						var list = (IList) Activator.CreateInstance(typeof (List<>).MakeGenericType(entityType));
-						foreach (var result in queryResults) {
-							list.Add(result);
-						}
-						values = list;
-					}
-					else {
-						// Create a generic list of the expected type
-						var array = Array.CreateInstance(entityType, queryResults.Count);
-						for (var i = 0; i < queryResults.Count; i++) {
-							array.SetValue(queryResults[i], i);
-						}
-						values = array;
-					}
+					values = CreateEnclosedType(entityType, enclosedType, queryResults);
 				}
 
 				relationshipProperty.SetValue(element, values, null);
@@ -438,31 +404,34 @@ namespace SQLiteNetExtensions.Extensions
 
                 var queryResults = conn.Query(tableMapping, query, primaryKeyValue);
 
-                if (enclosedType == EnclosedType.List)
-                {
-                    // Create a generic list of the expected type
-                    var list = (IList) Activator.CreateInstance(typeof (List<>).MakeGenericType(entityType));
-                    foreach (var result in queryResults)
-                    {
-                        list.Add(result);
-                    }
-                    values = list;
-                }
-                else
-                {
-                    // Create a generic list of the expected type
-                    var array = Array.CreateInstance(entityType, queryResults.Count);
-                    for (var i = 0; i < queryResults.Count; i++)
-                    {
-                        array.SetValue(queryResults[i], i);
-                    }
-                    values = array;
-                }
+				values = CreateEnclosedType(entityType, enclosedType, queryResults);
             }
 
             relationshipProperty.SetValue(element, values, null);
 
         }
+
+	    private static IEnumerable CreateEnclosedType(Type entityType, EnclosedType enclosedType, IList queryResults) {
+			switch (enclosedType) {
+				case EnclosedType.List:
+				case EnclosedType.ObservableCollection:
+					var collectionType = enclosedType == EnclosedType.List ? typeof(List<>) : typeof(ObservableCollection<>);
+
+					var list = (IList)Activator.CreateInstance(collectionType.MakeGenericType(entityType));
+					foreach (var result in queryResults) {
+						list.Add(result);
+					}
+					return list;
+				case EnclosedType.Array:
+					var array = Array.CreateInstance(entityType, queryResults.Count);
+					for (var i = 0; i < queryResults.Count; i++) {
+						array.SetValue(queryResults[i], i);
+					}
+					return array;
+			}
+
+		    return null;
+	    }
 
 	    private static string GetSoftDeleteFilterSql(Type entityType) {
 			var entitySoftDeleteColumn = entityType.GetSoftDeleteColumn();
