@@ -455,7 +455,7 @@ namespace SQLiteNetExtensions.Extensions
 
 	        if (softDeleteColumn != null && value != null) {
 		        if (softDeleteColumn.PropertyType == typeof (DateTime?)) {
-			        return !((DateTime?) softDeleteColumn.GetValue(value, null)).HasValue;
+			        return ((DateTime?) softDeleteColumn.GetValue(value, null)).HasValue;
 		        }
 
 		        if (softDeleteColumn.PropertyType == typeof (bool)) {
