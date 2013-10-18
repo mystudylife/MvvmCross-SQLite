@@ -12,6 +12,13 @@ namespace SQLiteNetExtensions.Extensions
 {
     public static class WriteOperations
     {
+	    public static void InsertWithChildren<T>(this SQLiteConnection conn, T element) {
+		    RefreshForeignKeys(ref element);
+
+		    conn.Insert(element);
+
+		    conn.UpdateInverseForeignKeys(element);
+	    }
 
         public static void UpdateWithChildren<T>(this SQLiteConnection conn, T element)
         {
