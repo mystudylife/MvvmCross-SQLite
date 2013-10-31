@@ -3547,7 +3547,7 @@ namespace Community.SQLite
 				Monitor.Enter(_lockPoint);
 			}
 
-			public void Dispose() {
+            public void Dispose() {
 				Monitor.Exit(_lockPoint);
 			}
 		}

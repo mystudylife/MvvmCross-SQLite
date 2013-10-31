@@ -132,15 +132,19 @@ namespace SQLiteNetExtensions.Extensions
 			string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
 
             // Objects already updated, now change the database
-            var childrenKeys = string.Join(",", childrenKeyList);
+            var childrenKeysParams = String.Join(",", childrenKeyList.Select(x => "?"));
+            var sqlParams = new List<object> {
+                keyValue
+            };
+            sqlParams.AddRange(childrenKeyList);
             var query = string.Format("update {0} set {1} = ? where {2} in ({3})",
-									  tableName, inverseForeignKeyName, inversePrimaryKeyName, childrenKeys);
-            conn.Execute(query, keyValue);
+                                      tableName, inverseForeignKeyName, inversePrimaryKeyName, childrenKeysParams);
+            conn.Execute(query, sqlParams.ToArray());
 
             // Delete previous relationships
             var deleteQuery = string.Format("update {0} set {1} = NULL where {1} == ? and {2} not in ({3})",
-											tableName, inverseForeignKeyName, inversePrimaryKeyName, childrenKeys);
-            conn.Execute(deleteQuery, keyValue);
+                                            tableName, inverseForeignKeyName, inversePrimaryKeyName, childrenKeysParams);
+            conn.Execute(deleteQuery, sqlParams.ToArray());
         }
 
         private static void UpdateOneToOneInverseForeignKey<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty)
