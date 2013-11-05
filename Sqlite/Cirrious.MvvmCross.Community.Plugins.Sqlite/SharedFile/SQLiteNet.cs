@@ -2456,29 +2456,25 @@ namespace Community.SQLite
             }
 
             //bind the values.
-            if (source != null)
-            {
-                for (int i = 0; i < source.Length; i++)
-                {
+            if (source != null) {
+                for (int i = 0; i < source.Length; i++) {
                     SQLiteCommand.BindParameter(Statement, i + 1, source[i], Connection.StoreDateTimeAsTicks);
                 }
             }
+
             r = SQLite3.Step(Statement);
 
-            if (r == SQLite3.Result.Done)
-            {
+            if (r == SQLite3.Result.Done) {
                 int rowsAffected = SQLite3.Changes(Connection.Handle);
                 SQLite3.Reset(Statement);
                 return rowsAffected;
             }
-            else if (r == SQLite3.Result.Error)
-            {
+            else if (r == SQLite3.Result.Error || r == SQLite3.Result.Constraint) {
                 string msg = SQLite3.GetErrmsg(Connection.Handle);
                 SQLite3.Reset(Statement);
                 throw SQLiteException.New(r, msg);
             }
-            else
-            {
+            else {
                 SQLite3.Reset(Statement);
                 throw SQLiteException.New(r, r.ToString());
             }
