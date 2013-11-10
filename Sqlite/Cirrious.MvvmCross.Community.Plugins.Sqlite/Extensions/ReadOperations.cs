@@ -11,103 +11,90 @@ using SQLiteNetExtensions.Extensions.TextBlob;
 using Cirrious.MvvmCross.Community.Plugins.Sqlite;
 using SQLiteConnection = Cirrious.MvvmCross.Community.Plugins.Sqlite.ISQLiteConnection;
 
-namespace SQLiteNetExtensions.Extensions
-{
-    public static class ReadOperations
-    {
-        public static T GetWithChildren<T>(this SQLiteConnection conn, object pk) where T : new()
-        {
+namespace SQLiteNetExtensions.Extensions {
+    public static class ReadOperations {
+        public static T GetWithChildren<T>(this SQLiteConnection conn, object pk) where T : new() {
             var element = conn.Get<T>(pk);
             conn.GetChildren(ref element);
             return element;
         }
 
-		/// <summary>
-		///		Executes the current <paramref name="query"/>
-		///		and enumerates it to a list.
-		/// </summary>
-		/// <remarks>
-		///		Warning. This method could cause serious performance
-		///		implications and should only be used for limited sets of data.
-		/// </remarks>
-		public static ICollection<T> WithChildren<T>(this ITableQuery<T> query) where T : new() {
-			List<T> results = query.ToList();
+        /// <summary>
+        ///		Executes the current <paramref name="query"/>
+        ///		and enumerates it to a list.
+        /// </summary>
+        /// <remarks>
+        ///		Warning. This method could cause serious performance
+        ///		implications and should only be used for limited sets of data.
+        /// </remarks>
+        public static ICollection<T> WithChildren<T>(this ITableQuery<T> query) where T : new() {
+            List<T> results = query.ToList();
 
-// ReSharper disable once CompareNonConstrainedGenericWithNull
-			if (results.Count == 0) return results;
+            // ReSharper disable once CompareNonConstrainedGenericWithNull
+            if (results.Count == 0) return results;
 
-			query.Connection.SetChildren(results);
+            query.Connection.SetChildren(results);
 
-			return results;
-		}
+            return results;
+        }
 
-	    public static void SetChildren<T>(this SQLiteConnection conn, IEnumerable<T> elements) where T : new() {
-		    if (elements is ITableQuery<T>) {
-			    throw new InvalidOperationException("Use WithChildren<T> or enumerate the query before calling SetChildren<T>.");
-		    }
+        public static void SetChildren<T>(this SQLiteConnection conn, IEnumerable<T> elements) where T : new() {
+            if (elements is ITableQuery<T>) {
+                throw new InvalidOperationException("Use WithChildren<T> or enumerate the query before calling SetChildren<T>.");
+            }
 
-		    var results = elements as ICollection<T> ?? elements.ToList();
+            var results = elements as ICollection<T> ?? elements.ToList();
 
-			foreach (var relationshipProperty in typeof(T).GetRelationshipProperties()) {
-				var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
+            foreach (var relationshipProperty in typeof(T).GetRelationshipProperties()) {
+                var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
 
-				if (relationshipAttribute is ManyToOneAttribute) {
-					conn.GetManyToOneChildren(results, relationshipProperty);
-				}
-				else if (relationshipAttribute is OneToManyAttribute) {
-					conn.GetOneToManyChildren(results, relationshipProperty);
-				}
+                if (relationshipAttribute is ManyToOneAttribute) {
+                    conn.GetManyToOneChildren(results, relationshipProperty);
+                }
+                else if (relationshipAttribute is OneToManyAttribute) {
+                    conn.GetOneToManyChildren(results, relationshipProperty);
+                }
 #if DEBUG
-				else {
-					Debug.WriteLine("WARNING: RelationshipAttribute {0} is not yet supported by WithChildren or SetChildren.", relationshipAttribute.GetType().Name);
-				}
+                else {
+                    Debug.WriteLine("WARNING: RelationshipAttribute {0} is not yet supported by WithChildren or SetChildren.", relationshipAttribute.GetType().Name);
+                }
 #endif
-			}
-	    }
+            }
+        }
 
-        public static void GetChildren<T>(this SQLiteConnection conn, ref T element) where T : new()
-        {
-            foreach (var relationshipProperty in typeof (T).GetRelationshipProperties())
-            {
+        public static void GetChildren<T>(this SQLiteConnection conn, ref T element) where T : new() {
+            foreach (var relationshipProperty in typeof(T).GetRelationshipProperties()) {
                 conn.GetChild(ref element, relationshipProperty);
             }
         }
 
-        public static void GetChild<T>(this SQLiteConnection conn, ref T element, string relationshipProperty)
-        {
-            conn.GetChild(ref element, typeof (T).GetProperty(relationshipProperty));
+        public static void GetChild<T>(this SQLiteConnection conn, ref T element, string relationshipProperty) {
+            conn.GetChild(ref element, typeof(T).GetProperty(relationshipProperty));
         }
 
-        public static void GetChild<T>(this SQLiteConnection conn, ref T element, PropertyInfo relationshipProperty)
-        {
+        public static void GetChild<T>(this SQLiteConnection conn, ref T element, PropertyInfo relationshipProperty) {
             var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
 
-            if (relationshipAttribute is OneToOneAttribute)
-            {
+            if (relationshipAttribute is OneToOneAttribute) {
                 conn.GetOneToOneChild(ref element, relationshipProperty);
             }
-            else if (relationshipAttribute is OneToManyAttribute)
-            {
+            else if (relationshipAttribute is OneToManyAttribute) {
                 conn.GetOneToManyChildren(ref element, relationshipProperty);
             }
-            else if (relationshipAttribute is ManyToOneAttribute)
-            {
+            else if (relationshipAttribute is ManyToOneAttribute) {
                 conn.GetManyToOneChild(ref element, relationshipProperty);
             }
-            else if (relationshipAttribute is ManyToManyAttribute)
-            {
+            else if (relationshipAttribute is ManyToManyAttribute) {
                 conn.GetManyToManyChildren(ref element, relationshipProperty);
             }
-            else if (relationshipAttribute is TextBlobAttribute)
-            {
+            else if (relationshipAttribute is TextBlobAttribute) {
                 TextBlobOperations.GetTextBlobChild(ref element, relationshipProperty);
             }
         }
 
         private static void GetOneToOneChild<T>(this SQLiteConnection conn, ref T element,
-                                                PropertyInfo relationshipProperty)
-        {
-            var type = typeof (T);
+                                                PropertyInfo relationshipProperty) {
+            var type = typeof(T);
             EnclosedType enclosedType;
             var entityType = relationshipProperty.GetEntityType(out enclosedType);
 
@@ -134,39 +121,33 @@ namespace SQLiteNetExtensions.Extensions
             var inverseProperty = type.GetInverseProperty(relationshipProperty);
 
             object value = null;
-            if (hasForeignKey)
-            {
+            if (hasForeignKey) {
                 var foreignKeyValue = currentEntityForeignKeyProperty.GetValue(element, null);
-                if (foreignKeyValue != null)
-                {
+                if (foreignKeyValue != null) {
                     value = conn.Find(foreignKeyValue, tableMapping);
                 }
             }
-            else
-            {
+            else {
                 var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
-                if (primaryKeyValue != null)
-                {
+                if (primaryKeyValue != null) {
                     var query = string.Format("select * from {0} where {1} = ? limit 1", entityType.Name,
                                               otherEntityForeignKeyProperty.Name);
                     value = conn.Query(tableMapping, query, primaryKeyValue).FirstOrDefault();
-                        // Its a OneToOne, take only the first
+                    // Its a OneToOne, take only the first
                 }
             }
 
             relationshipProperty.SetValue(element, value, null);
 
-            if (value != null && inverseProperty != null)
-            {
+            if (value != null && inverseProperty != null) {
                 inverseProperty.SetValue(value, element, null);
             }
         }
 
 
         private static void GetManyToOneChild<T>(this SQLiteConnection conn, ref T element,
-                                                 PropertyInfo relationshipProperty)
-        {
-            var type = typeof (T);
+                                                 PropertyInfo relationshipProperty) {
+            var type = typeof(T);
             EnclosedType enclosedType;
             var entityType = relationshipProperty.GetEntityType(out enclosedType);
 
@@ -184,77 +165,75 @@ namespace SQLiteNetExtensions.Extensions
 
             object value = null;
             var foreignKeyValue = currentEntityForeignKeyProperty.GetValue(element, null);
-            if (foreignKeyValue != null)
-            {
+            if (foreignKeyValue != null) {
                 value = conn.Find(foreignKeyValue, tableMapping);
 
-	            if (IsSoftDeleted(entityType, value)) {
-		            value = null;
-	            }
+                if (IsSoftDeleted(entityType, value)) {
+                    value = null;
+                }
             }
 
             relationshipProperty.SetValue(element, value, null);
         }
 
-	    private static void GetManyToOneChildren<T>(this SQLiteConnection conn, ICollection<T> elements, PropertyInfo relationshipProperty) where T : new() {
+        private static void GetManyToOneChildren<T>(this SQLiteConnection conn, ICollection<T> elements, PropertyInfo relationshipProperty) where T : new() {
 
-			var type = typeof(T);
-			EnclosedType enclosedType;
-			var entityType = relationshipProperty.GetEntityType(out enclosedType);
+            var type = typeof(T);
+            EnclosedType enclosedType;
+            var entityType = relationshipProperty.GetEntityType(out enclosedType);
 
-			Debug.Assert(enclosedType == EnclosedType.None, "ManyToOne relationship cannot be of type List or Array");
+            Debug.Assert(enclosedType == EnclosedType.None, "ManyToOne relationship cannot be of type List or Array");
 
-			var otherEntityPrimaryKeyProperty = entityType.GetPrimaryKey();
-			Debug.Assert(otherEntityPrimaryKeyProperty != null,
-						 "ManyToOne relationship destination must have Primary Key");
+            var otherEntityPrimaryKeyProperty = entityType.GetPrimaryKey();
+            Debug.Assert(otherEntityPrimaryKeyProperty != null,
+                         "ManyToOne relationship destination must have Primary Key");
 
-			var currentEntityForeignKeyProperty = type.GetForeignKeyProperty(relationshipProperty);
-			Debug.Assert(currentEntityForeignKeyProperty != null, "ManyToOne relationship origin must have Foreign Key");
+            var currentEntityForeignKeyProperty = type.GetForeignKeyProperty(relationshipProperty);
+            Debug.Assert(currentEntityForeignKeyProperty != null, "ManyToOne relationship origin must have Foreign Key");
 
-			var tableMapping = conn.GetMapping(entityType);
-			Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
+            var tableMapping = conn.GetMapping(entityType);
+            Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
 
-			IEnumerable<object> foreignKeyValues = elements.Select(x => {
-				var fkPropVal = currentEntityForeignKeyProperty.GetValue(x, null);
+            IEnumerable<object> foreignKeyValues = elements.Select(x => {
+                var fkPropVal = currentEntityForeignKeyProperty.GetValue(x, null);
 
-				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
-			}).Where(x => x != null).Distinct().ToList();
-			
-			var query = String.Format(
-				"select * from \"{0}\" where \"{1}\" IN ({2})",
-				tableMapping.TableName,
-				otherEntityPrimaryKeyProperty.GetColumnName(),
-				String.Join(",", foreignKeyValues.Select(x => "?"))
-			);
+                return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
+            }).Where(x => x != null).Distinct().ToList();
 
-			var softDeleteSql = GetSoftDeleteFilterSql(entityType);
+            var query = String.Format(
+                "select * from \"{0}\" where \"{1}\" IN ({2})",
+                tableMapping.TableName,
+                otherEntityPrimaryKeyProperty.GetColumnName(),
+                String.Join(",", foreignKeyValues.Select(x => "?"))
+            );
 
-			if (softDeleteSql != null) {
-				query = String.Concat(query, " AND ", softDeleteSql);
-			}
+            var softDeleteSql = GetSoftDeleteFilterSql(entityType);
 
-		    var foreignValues = conn.Query(
-				tableMapping,
-				query,
-				foreignKeyValues.ToArray()
-			);
+            if (softDeleteSql != null) {
+                query = String.Concat(query, " AND ", softDeleteSql);
+            }
 
-		    foreach (var element in elements) {
-				var foreignKeyValue = currentEntityForeignKeyProperty.GetValue(element, null);
-			    object value = null;
+            var foreignValues = conn.Query(
+                tableMapping,
+                query,
+                foreignKeyValues.ToArray()
+            );
 
-			    if (foreignKeyValue != null) {
-				    value = foreignValues.SingleOrDefault(x => otherEntityPrimaryKeyProperty.GetValue(x, null).Equals(foreignKeyValue));
-			    }
+            foreach (var element in elements) {
+                var foreignKeyValue = currentEntityForeignKeyProperty.GetValue(element, null);
+                object value = null;
 
-				relationshipProperty.SetValue(element, value, null);
-		    }
-	    }
+                if (foreignKeyValue != null) {
+                    value = foreignValues.SingleOrDefault(x => otherEntityPrimaryKeyProperty.GetValue(x, null).Equals(foreignKeyValue));
+                }
+
+                relationshipProperty.SetValue(element, value, null);
+            }
+        }
 
         private static void GetOneToManyChildren<T>(this SQLiteConnection conn, ref T element,
-                                                    PropertyInfo relationshipProperty)
-        {
-            var type = typeof (T);
+                                                    PropertyInfo relationshipProperty) {
+            var type = typeof(T);
             EnclosedType enclosedType;
             var entityType = relationshipProperty.GetEntityType(out enclosedType);
 
@@ -273,105 +252,101 @@ namespace SQLiteNetExtensions.Extensions
 
             IEnumerable values = null;
             var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
-            if (primaryKeyValue != null)
-            {
+            if (primaryKeyValue != null) {
                 var query = string.Format("select * from {0} where {1} = ?", entityType.GetTableName(),
                                           otherEntityForeignKeyProperty.GetColumnName());
 
-				var softDeleteSql = GetSoftDeleteFilterSql(entityType);
+                var softDeleteSql = GetSoftDeleteFilterSql(entityType);
 
-				if (softDeleteSql != null) {
-					query = String.Concat(query, " AND ", softDeleteSql);
-				}
+                if (softDeleteSql != null) {
+                    query = String.Concat(query, " AND ", softDeleteSql);
+                }
 
                 var queryResults = conn.Query(tableMapping, query, primaryKeyValue is Guid ? primaryKeyValue.ToString() : primaryKeyValue);
 
-	            values = CreateEnclosedType(entityType, enclosedType, queryResults);
+                values = CreateEnclosedType(entityType, enclosedType, queryResults);
             }
 
             relationshipProperty.SetValue(element, values, null);
 
-            if (inverseProperty != null && values != null)
-            {
-                // Stablish inverse relationships (we already have that object anyway)
-                foreach (var value in values)
-                {
+            if (inverseProperty != null && values != null) {
+                // Establish inverse relationships (we already have that object anyway)
+                foreach (var value in values) {
                     inverseProperty.SetValue(value, element, null);
                 }
             }
         }
 
-		private static void GetOneToManyChildren<T>(this SQLiteConnection conn, ICollection<T> elements,
-													PropertyInfo relationshipProperty) {
-			var type = typeof(T);
-			EnclosedType enclosedType;
-			var entityType = relationshipProperty.GetEntityType(out enclosedType);
+        private static void GetOneToManyChildren<T>(this SQLiteConnection conn, ICollection<T> elements,
+                                                    PropertyInfo relationshipProperty) {
+            var type = typeof(T);
+            EnclosedType enclosedType;
+            var entityType = relationshipProperty.GetEntityType(out enclosedType);
 
-			Debug.Assert(enclosedType != EnclosedType.None, "OneToMany relationship must be a List or Array");
+            Debug.Assert(enclosedType != EnclosedType.None, "OneToMany relationship must be a List or Array");
 
-			var currentEntityPrimaryKeyProperty = type.GetPrimaryKey();
-			Debug.Assert(currentEntityPrimaryKeyProperty != null, "OneToMany relationship origin must have Primary Key");
+            var currentEntityPrimaryKeyProperty = type.GetPrimaryKey();
+            Debug.Assert(currentEntityPrimaryKeyProperty != null, "OneToMany relationship origin must have Primary Key");
 
-			var otherEntityForeignKeyProperty = type.GetForeignKeyProperty(relationshipProperty, inverse: true);
-			Debug.Assert(otherEntityForeignKeyProperty != null,
-						 "OneToMany relationship destination must have Foreign Key to the origin class");
+            var otherEntityForeignKeyProperty = type.GetForeignKeyProperty(relationshipProperty, inverse: true);
+            Debug.Assert(otherEntityForeignKeyProperty != null,
+                         "OneToMany relationship destination must have Foreign Key to the origin class");
 
-			var tableMapping = conn.GetMapping(entityType);
-			Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
+            var tableMapping = conn.GetMapping(entityType);
+            Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
 
-			var inverseProperty = type.GetInverseProperty(relationshipProperty);
+            var inverseProperty = type.GetInverseProperty(relationshipProperty);
 
-			IEnumerable<object> primaryKeyValues = elements.Select(x => {
-				var fkPropVal = currentEntityPrimaryKeyProperty.GetValue(x, null);
+            IEnumerable<object> primaryKeyValues = elements.Select(x => {
+                var fkPropVal = currentEntityPrimaryKeyProperty.GetValue(x, null);
 
-				return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
-			}).Where(x => x != null).Distinct().ToList();
+                return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
+            }).Where(x => x != null).Distinct().ToList();
 
-			var query = String.Format(
-				"select * from \"{0}\" where \"{1}\" IN ({2})",
-				entityType.GetTableName(),
-				otherEntityForeignKeyProperty.GetColumnName(),
-				String.Join(",", primaryKeyValues.Select(x => "?"))
-			);
+            var query = String.Format(
+                "select * from \"{0}\" where \"{1}\" IN ({2})",
+                entityType.GetTableName(),
+                otherEntityForeignKeyProperty.GetColumnName(),
+                String.Join(",", primaryKeyValues.Select(x => "?"))
+            );
 
-			var softDeleteSql = GetSoftDeleteFilterSql(entityType);
+            var softDeleteSql = GetSoftDeleteFilterSql(entityType);
 
-			if (softDeleteSql != null) {
-				query = String.Concat(query, " AND ", softDeleteSql);
-			}
+            if (softDeleteSql != null) {
+                query = String.Concat(query, " AND ", softDeleteSql);
+            }
 
-			var children = conn.Query(
-				tableMapping,
-				query,
-				primaryKeyValues.ToArray()
-			);
+            var children = conn.Query(
+                tableMapping,
+                query,
+                primaryKeyValues.ToArray()
+            );
 
-			foreach (var element in elements) {
-				var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
+            foreach (var element in elements) {
+                var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
 
-				var queryResults = children.Where(x => otherEntityForeignKeyProperty.GetValue(x, null).Equals(primaryKeyValue)).ToList();
-				
-				IEnumerable values = null;
+                var queryResults = children.Where(x => otherEntityForeignKeyProperty.GetValue(x, null).Equals(primaryKeyValue)).ToList();
 
-				if (primaryKeyValue != null) {
-					values = CreateEnclosedType(entityType, enclosedType, queryResults);
-				}
+                IEnumerable values = null;
 
-				relationshipProperty.SetValue(element, values, null);
+                if (primaryKeyValue != null) {
+                    values = CreateEnclosedType(entityType, enclosedType, queryResults);
+                }
 
-				if (inverseProperty != null && values != null) {
-					// Stablish inverse relationships (we already have that object anyway)
-					foreach (var value in values) {
-						inverseProperty.SetValue(value, element, null);
-					}
-				}
-			}
-		}
+                relationshipProperty.SetValue(element, values, null);
+
+                if (inverseProperty != null && values != null) {
+                    // Establish inverse relationships (we already have that object anyway)
+                    foreach (var value in values) {
+                        inverseProperty.SetValue(value, element, null);
+                    }
+                }
+            }
+        }
 
         private static void GetManyToManyChildren<T>(this SQLiteConnection conn, ref T element,
-                                                     PropertyInfo relationshipProperty)
-        {
-            var type = typeof (T);
+                                                     PropertyInfo relationshipProperty) {
+            var type = typeof(T);
             EnclosedType enclosedType;
             var entityType = relationshipProperty.GetEntityType(out enclosedType);
 
@@ -393,8 +368,7 @@ namespace SQLiteNetExtensions.Extensions
 
             IEnumerable values = null;
             var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
-            if (primaryKeyValue != null)
-            {
+            if (primaryKeyValue != null) {
                 // Obtain the relationship keys
                 var keysQuery = string.Format("select {0} from {1} where {2} = ?", otherEntityForeignKeyProperty.Name,
                                               intermediateType.Name, currentEntityForeignKeyProperty.Name);
@@ -404,66 +378,66 @@ namespace SQLiteNetExtensions.Extensions
 
                 var queryResults = conn.Query(tableMapping, query, primaryKeyValue);
 
-				values = CreateEnclosedType(entityType, enclosedType, queryResults);
+                values = CreateEnclosedType(entityType, enclosedType, queryResults);
             }
 
             relationshipProperty.SetValue(element, values, null);
 
         }
 
-	    private static IEnumerable CreateEnclosedType(Type entityType, EnclosedType enclosedType, IList queryResults) {
-			switch (enclosedType) {
-				case EnclosedType.List:
-				case EnclosedType.ObservableCollection:
-					var collectionType = enclosedType == EnclosedType.List ? typeof(List<>) : typeof(ObservableCollection<>);
+        private static IEnumerable CreateEnclosedType(Type entityType, EnclosedType enclosedType, IList queryResults) {
+            switch (enclosedType) {
+                case EnclosedType.List:
+                case EnclosedType.ObservableCollection:
+                    var collectionType = enclosedType == EnclosedType.List ? typeof(List<>) : typeof(ObservableCollection<>);
 
-					var list = (IList)Activator.CreateInstance(collectionType.MakeGenericType(entityType));
-					foreach (var result in queryResults) {
-						list.Add(result);
-					}
-					return list;
-				case EnclosedType.Array:
-					var array = Array.CreateInstance(entityType, queryResults.Count);
-					for (var i = 0; i < queryResults.Count; i++) {
-						array.SetValue(queryResults[i], i);
-					}
-					return array;
-			}
+                    var list = (IList)Activator.CreateInstance(collectionType.MakeGenericType(entityType));
+                    foreach (var result in queryResults) {
+                        list.Add(result);
+                    }
+                    return list;
+                case EnclosedType.Array:
+                    var array = Array.CreateInstance(entityType, queryResults.Count);
+                    for (var i = 0; i < queryResults.Count; i++) {
+                        array.SetValue(queryResults[i], i);
+                    }
+                    return array;
+            }
 
-		    return null;
-	    }
+            return null;
+        }
 
-	    private static string GetSoftDeleteFilterSql(Type entityType) {
-			var entitySoftDeleteColumn = entityType.GetSoftDeleteColumn();
+        private static string GetSoftDeleteFilterSql(Type entityType) {
+            var entitySoftDeleteColumn = entityType.GetSoftDeleteColumn();
 
-		    if (entitySoftDeleteColumn == null) return null;
+            if (entitySoftDeleteColumn == null) return null;
 
-			if (entitySoftDeleteColumn.PropertyType == typeof(DateTime?)) {
-				return String.Format("{0} IS NULL", entitySoftDeleteColumn.GetColumnName());
-			}
-			if (entitySoftDeleteColumn.PropertyType == typeof (bool)) {
-				return String.Format("{0} = 0", entitySoftDeleteColumn.GetColumnName());
-			}
+            if (entitySoftDeleteColumn.PropertyType == typeof(DateTime?)) {
+                return String.Format("{0} IS NULL", entitySoftDeleteColumn.GetColumnName());
+            }
+            if (entitySoftDeleteColumn.PropertyType == typeof(bool)) {
+                return String.Format("{0} = 0", entitySoftDeleteColumn.GetColumnName());
+            }
 
-			Debug.Assert(true, "SoftDeleteColumn property type must be a nullable datetime or boolean.");
+            Debug.Assert(true, "SoftDeleteColumn property type must be a nullable datetime or boolean.");
 
-		    return null;
-	    }
+            return null;
+        }
 
-	    private static bool IsSoftDeleted(Type entityType, object value) {
-		    var softDeleteColumn = entityType.GetSoftDeleteColumn();
+        private static bool IsSoftDeleted(Type entityType, object value) {
+            var softDeleteColumn = entityType.GetSoftDeleteColumn();
 
-	        if (softDeleteColumn != null && value != null) {
-		        if (softDeleteColumn.PropertyType == typeof (DateTime?)) {
-			        return ((DateTime?) softDeleteColumn.GetValue(value, null)).HasValue;
-		        }
+            if (softDeleteColumn != null && value != null) {
+                if (softDeleteColumn.PropertyType == typeof(DateTime?)) {
+                    return ((DateTime?)softDeleteColumn.GetValue(value, null)).HasValue;
+                }
 
-		        if (softDeleteColumn.PropertyType == typeof (bool)) {
-			        return (bool) softDeleteColumn.GetValue(value, null);
-		        }
-	        }
+                if (softDeleteColumn.PropertyType == typeof(bool)) {
+                    return (bool)softDeleteColumn.GetValue(value, null);
+                }
+            }
 
-		    return false;
-	    }
+            return false;
+        }
     }
 }

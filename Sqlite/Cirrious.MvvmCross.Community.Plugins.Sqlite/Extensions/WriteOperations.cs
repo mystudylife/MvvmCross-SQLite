@@ -8,20 +8,17 @@ using SQLiteConnection = Cirrious.MvvmCross.Community.Plugins.Sqlite.ISQLiteConn
 using SQLiteNetExtensions.Attributes;
 using SQLiteNetExtensions.Extensions.TextBlob;
 
-namespace SQLiteNetExtensions.Extensions
-{
-    public static class WriteOperations
-    {
-	    public static void InsertWithChildren<T>(this SQLiteConnection conn, T element) {
-		    RefreshForeignKeys(ref element);
+namespace SQLiteNetExtensions.Extensions {
+    public static class WriteOperations {
+        public static void InsertWithChildren<T>(this SQLiteConnection conn, T element) {
+            RefreshForeignKeys(ref element);
 
-		    conn.Insert(element);
+            conn.Insert(element);
 
-		    conn.UpdateInverseForeignKeys(element);
-	    }
+            conn.UpdateInverseForeignKeys(element);
+        }
 
-        public static void UpdateWithChildren<T>(this SQLiteConnection conn, T element)
-        {
+        public static void UpdateWithChildren<T>(this SQLiteConnection conn, T element) {
             // Update the current element
             RefreshForeignKeys(ref element);
             conn.Update(element);
@@ -30,17 +27,13 @@ namespace SQLiteNetExtensions.Extensions
             conn.UpdateInverseForeignKeys(element);
         }
 
-        private static void RefreshForeignKeys<T>(ref T element)
-        {
-            var type = typeof (T);
-            foreach (var relationshipProperty in type.GetRelationshipProperties())
-            {
+        private static void RefreshForeignKeys<T>(ref T element) {
+            var type = typeof(T);
+            foreach (var relationshipProperty in type.GetRelationshipProperties()) {
                 var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
-                if (relationshipAttribute is OneToOneAttribute || relationshipAttribute is ManyToOneAttribute)
-                {
+                if (relationshipAttribute is OneToOneAttribute || relationshipAttribute is ManyToOneAttribute) {
                     var foreignKeyProperty = type.GetForeignKeyProperty(relationshipProperty);
-                    if (foreignKeyProperty != null)
-                    {
+                    if (foreignKeyProperty != null) {
                         EnclosedType enclosedType;
                         var entityType = relationshipProperty.GetEntityType(out enclosedType);
                         var destinationPrimaryKeyProperty = entityType.GetPrimaryKey();
@@ -49,43 +42,35 @@ namespace SQLiteNetExtensions.Extensions
 
                         var relationshipValue = relationshipProperty.GetValue(element, null);
                         object foreignKeyValue = null;
-                        if (relationshipValue != null)
-                        {
+                        if (relationshipValue != null) {
                             foreignKeyValue = destinationPrimaryKeyProperty.GetValue(relationshipValue, null);
                         }
                         foreignKeyProperty.SetValue(element, foreignKeyValue, null);
                     }
                 }
-                else if (relationshipAttribute is TextBlobAttribute)
-                {
+                else if (relationshipAttribute is TextBlobAttribute) {
                     TextBlobOperations.UpdateTextBlobProperty(ref element, relationshipProperty);
                 }
             }
         }
 
 
-        private static void UpdateInverseForeignKeys<T>(this SQLiteConnection conn, T element)
-        {
-            foreach (var relationshipProperty in typeof(T).GetRelationshipProperties())
-            {
+        private static void UpdateInverseForeignKeys<T>(this SQLiteConnection conn, T element) {
+            foreach (var relationshipProperty in typeof(T).GetRelationshipProperties()) {
                 var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
-                if (relationshipAttribute is OneToManyAttribute)
-                {
+                if (relationshipAttribute is OneToManyAttribute) {
                     conn.UpdateOneToManyInverseForeignKey(element, relationshipProperty);
                 }
-                else if (relationshipAttribute is OneToOneAttribute)
-                {
+                else if (relationshipAttribute is OneToOneAttribute) {
                     conn.UpdateOneToOneInverseForeignKey(element, relationshipProperty);
                 }
-                else if (relationshipAttribute is ManyToManyAttribute)
-                {
+                else if (relationshipAttribute is ManyToManyAttribute) {
                     conn.UpdateManyToManyForeignKeys(element, relationshipProperty);
                 }
             }
         }
-            
-        private static void UpdateOneToManyInverseForeignKey<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty)
-        {
+
+        private static void UpdateOneToManyInverseForeignKey<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty) {
             var type = typeof(T);
 
             EnclosedType enclosedType;
@@ -101,8 +86,7 @@ namespace SQLiteNetExtensions.Extensions
             Debug.Assert(inverseForeignKeyProperty != null, "Unable to find foreign key for OneToMany relationship");
 
             var inverseProperty = type.GetInverseProperty(relationshipProperty);
-            if (inverseProperty != null)
-            {
+            if (inverseProperty != null) {
                 EnclosedType inverseEnclosedType;
                 var inverseEntityType = inverseProperty.GetEntityType(out inverseEnclosedType);
                 Debug.Assert(inverseEnclosedType == EnclosedType.None, "OneToMany inverse relationship shouldn't be List or Array");
@@ -112,24 +96,21 @@ namespace SQLiteNetExtensions.Extensions
             var keyValue = originPrimaryKeyProperty.GetValue(element, null);
             var children = (IEnumerable)relationshipProperty.GetValue(element, null);
             var childrenKeyList = new List<object>();
-            if (children != null)
-            {
-                foreach (var child in children)
-                {
+            if (children != null) {
+                foreach (var child in children) {
                     var childKey = inversePrimaryKeyProperty.GetValue(child, null);
                     childrenKeyList.Add(childKey);
 
                     inverseForeignKeyProperty.SetValue(child, keyValue, null);
-                    if (inverseProperty != null)
-                    {
+                    if (inverseProperty != null) {
                         inverseProperty.SetValue(child, element, null);
                     }
                 }
             }
 
-			string tableName = entityType.GetTableName();
-			string inverseForeignKeyName = inverseForeignKeyProperty.GetColumnName();
-			string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
+            string tableName = entityType.GetTableName();
+            string inverseForeignKeyName = inverseForeignKeyProperty.GetColumnName();
+            string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
 
             // Objects already updated, now change the database
             var childrenKeysParams = String.Join(",", childrenKeyList.Select(x => "?"));
@@ -147,8 +128,7 @@ namespace SQLiteNetExtensions.Extensions
             conn.Execute(deleteQuery, sqlParams.ToArray());
         }
 
-        private static void UpdateOneToOneInverseForeignKey<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty)
-        {
+        private static void UpdateOneToOneInverseForeignKey<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty) {
             var type = typeof(T);
 
             EnclosedType enclosedType;
@@ -161,8 +141,7 @@ namespace SQLiteNetExtensions.Extensions
             Debug.Assert(enclosedType == EnclosedType.None, "OneToOne relationships cannot be List or Array of entities");
 
             var inverseProperty = type.GetInverseProperty(relationshipProperty);
-            if (inverseProperty != null)
-            {
+            if (inverseProperty != null) {
                 EnclosedType inverseEnclosedType;
                 var inverseEntityType = inverseProperty.GetEntityType(out inverseEnclosedType);
                 Debug.Assert(inverseEnclosedType == EnclosedType.None, "OneToOne inverse relationship shouldn't be List or Array");
@@ -170,25 +149,20 @@ namespace SQLiteNetExtensions.Extensions
             }
 
             object keyValue = null;
-            if (originPrimaryKeyProperty != null && inverseForeignKeyProperty != null)
-            {
+            if (originPrimaryKeyProperty != null && inverseForeignKeyProperty != null) {
                 keyValue = originPrimaryKeyProperty.GetValue(element, null);
             }
 
             object childKey = null;
             var child = relationshipProperty.GetValue(element, null);
-            if (child != null)
-            {
-                if (inverseForeignKeyProperty != null && keyValue != null)
-                {
+            if (child != null) {
+                if (inverseForeignKeyProperty != null && keyValue != null) {
                     inverseForeignKeyProperty.SetValue(child, keyValue, null);
                 }
-                if (inverseProperty != null)
-                {
+                if (inverseProperty != null) {
                     inverseProperty.SetValue(child, element, null);
                 }
-                if (inversePrimaryKeyProperty != null)
-                {
+                if (inversePrimaryKeyProperty != null) {
                     childKey = inversePrimaryKeyProperty.GetValue(child, null);
                 }
             }
@@ -196,24 +170,23 @@ namespace SQLiteNetExtensions.Extensions
 
             // Objects already updated, now change the database
             if (inverseForeignKeyProperty != null && inversePrimaryKeyProperty != null) {
-	            string tableName = entityType.GetTableName();
-	            string inverseForeignKeyName = inverseForeignKeyProperty.GetColumnName();
-	            string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
+                string tableName = entityType.GetTableName();
+                string inverseForeignKeyName = inverseForeignKeyProperty.GetColumnName();
+                string inversePrimaryKeyName = inversePrimaryKeyProperty.GetColumnName();
 
-                var query = string.Format("update {0} set {1} = ? where {2} == ?",
-										  tableName, inverseForeignKeyName, inversePrimaryKeyName);
+                var query = String.Format("update {0} set {1} = ? where {2} == ?",
+                                          tableName, inverseForeignKeyName, inversePrimaryKeyName);
                 conn.Execute(query, keyValue, childKey);
 
                 // Delete previous relationships
-                var deleteQuery = string.Format("update {0} set {1} = NULL where {1} == ? and {2} not in ({3})",
-												tableName, inverseForeignKeyName, inversePrimaryKeyName, childKey ?? "");
-                conn.Execute(deleteQuery, keyValue);
+                var deleteQuery = String.Format("update {0} set {1} = NULL where {1} == ? and {2} not in (?)",
+                                                tableName, inverseForeignKeyName, inversePrimaryKeyName);
+                conn.Execute(deleteQuery, keyValue, childKey);
             }
         }
 
-        private static void UpdateManyToManyForeignKeys<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty)
-        {
-            var type = typeof (T);
+        private static void UpdateManyToManyForeignKeys<T>(this SQLiteConnection conn, T element, PropertyInfo relationshipProperty) {
+            var type = typeof(T);
 
             EnclosedType enclosedType;
             var entityType = relationshipProperty.GetEntityType(out enclosedType);
@@ -237,22 +210,26 @@ namespace SQLiteNetExtensions.Extensions
             // Obtain the list of children keys
             var childList = (IEnumerable)relationshipProperty.GetValue(element, null);
             var childKeyList = (from object child in childList ?? new List<object>()
-                               select otherEntityPrimaryKeyProperty.GetValue(child, null)).ToList();
-            var childKeysString = string.Join(",", childKeyList);
+                                select otherEntityPrimaryKeyProperty.GetValue(child, null)).ToList();
+
+            var childrenKeysParams = String.Join(",", childKeyList.Select(x => "?"));
 
             // Check for already existing relationships
             var currentChildrenQuery = string.Format("select {0} from {1} where {2} == ? and {0} in ({3})",
-                otherEntityForeignKeyProperty.Name, intermediateType.Name, currentEntityForeignKeyProperty.Name, childKeysString);
+                otherEntityForeignKeyProperty.Name, intermediateType.Name, currentEntityForeignKeyProperty.Name, childrenKeysParams);
+
+            var sqlParams = new List<object> { primaryKey };
+            sqlParams.AddRange(childKeyList);
+
             var currentChildKeyList =
-                from object child in conn.Query(conn.GetMapping(intermediateType), currentChildrenQuery, primaryKey)
+                from object child in conn.Query(conn.GetMapping(intermediateType), currentChildrenQuery, sqlParams.ToArray())
                 select otherEntityForeignKeyProperty.GetValue(child, null);
-            
+
 
             // Insert missing relationships in the intermediate table
             var missingChildKeyList = childKeyList.Where(o => !currentChildKeyList.Contains(o)).ToList();
             var missingIntermediateObjects = new List<object>(missingChildKeyList.Count);
-            foreach (var missingChildKey in missingChildKeyList)
-            {
+            foreach (var missingChildKey in missingChildKeyList) {
                 var intermediateObject = Activator.CreateInstance(intermediateType);
                 currentEntityForeignKeyProperty.SetValue(intermediateObject, primaryKey, null);
                 otherEntityForeignKeyProperty.SetValue(intermediateObject, missingChildKey, null);
@@ -265,8 +242,8 @@ namespace SQLiteNetExtensions.Extensions
             // Delete any other pending relationship
             var deleteQuery = string.Format("delete from {0} where {1} == ? and {2} not in ({3})",
                 intermediateType.Name, currentEntityForeignKeyProperty.Name,
-                otherEntityForeignKeyProperty.Name, childKeysString);
-            conn.Execute(deleteQuery, primaryKey);
+                otherEntityForeignKeyProperty.Name, childrenKeysParams);
+            conn.Execute(deleteQuery, sqlParams.ToArray());
         }
     }
 }
