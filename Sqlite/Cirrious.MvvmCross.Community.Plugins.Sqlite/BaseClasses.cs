@@ -594,7 +594,8 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         /// of operations on the connection but should never call <see cref="BeginTransaction"/> or
         /// <see cref="Commit"/>.
         /// </param>
-        void RunInTransaction(Action action);
+        /// <param name="deferForeignKeys">True to defer foreign key checks until the end of the transaction.</param>
+        void RunInTransaction(Action action, bool deferForeignKeys = false);
 
         /// <summary>
         /// Inserts all specified objects.

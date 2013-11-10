@@ -6,6 +6,8 @@ namespace SQLiteNetExtensions.Attributes
     [AttributeUsage(AttributeTargets.Property)]
     public class ForeignKeyAttribute : IndexedAttribute
     {
+        public OnDeleteAction OnDeleteAction { get; set; }
+
         public ForeignKeyAttribute(Type foreignType)
         {
             ForeignType = foreignType;

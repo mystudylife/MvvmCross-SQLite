@@ -27,6 +27,10 @@ namespace SQLiteNetExtensions.Extensions {
             conn.UpdateInverseForeignKeys(element);
         }
 
+        public static void DeleteWithChildren<T>(this SQLiteConnection conn, T element) {
+            
+        }
+
         private static void RefreshForeignKeys<T>(ref T element) {
             var type = typeof(T);
             foreach (var relationshipProperty in type.GetRelationshipProperties()) {

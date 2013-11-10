@@ -293,7 +293,6 @@ namespace Community.SQLite
 				this.Execute("PRAGMA foreign_keys = OFF;");
 		}
 
-
         /// <summary>
         /// Retrieves the mapping that is automatically generated for the given type.
         /// </summary>
@@ -1099,11 +1098,15 @@ namespace Community.SQLite
         /// of operations on the connection but should never call <see cref="BeginTransaction"/> or
         /// <see cref="Commit"/>.
         /// </param>
-        public void RunInTransaction(Action action)
+        /// <param name="deferForeignKeys">True to defer foreign key checks until the end of the transaction.</param>
+        public void RunInTransaction(Action action, bool deferForeignKeys = false)
         {
             try
             {
                 var savePoint = SaveTransactionPoint();
+                if (deferForeignKeys) {
+                    this.Execute("PRAGMA defer_foreign_keys = ON;");
+                }
                 action();
                 Release(savePoint);
             }
@@ -1912,11 +1915,12 @@ namespace Community.SQLite
 
 		    foreach (var fk in foreignKeys) {
 			    var attribute = fk.GetAttribute<ForeignKeyAttribute>();
-
+                
 				decls.Add(String.Format(
-					"FOREIGN KEY ({0}) REFERENCES {1}({2})", fk.GetColumnName(), attribute.ForeignType.GetTableName(), attribute.ForeignType.GetPrimaryKey().GetColumnName()
-					)
-				);
+		            "FOREIGN KEY ({0}) REFERENCES {1}({2}) ON DELETE {3}", fk.GetColumnName(), attribute.ForeignType.GetTableName(),
+		            attribute.ForeignType.GetPrimaryKey().GetColumnName(),
+                    attribute.OnDeleteAction.ToSql()
+		        ));
 		    }
 
 		    string result = String.Join(", \n", decls);

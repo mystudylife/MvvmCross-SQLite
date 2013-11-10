@@ -2,9 +2,34 @@
 {
     public enum OnDeleteAction
     {
-        Cascade,    // Delete also the destination object
+        None,
+        /// <summary>
+        ///     Don't allow deleting if the relationship
+        ///     is set.
+        /// </summary>
         Deny,       // Don't allow deleting if relationship is set
-        Nullify,    // Nullify inverse relationships
-        None
+        /// <summary>
+        ///     Set foreign key to null.
+        /// </summary>
+        Nullify,
+        /// <summary>
+        ///     Delete the child entities.
+        /// </summary>
+        Cascade
+    }
+
+    public static class OnDeleteActionExtensions {
+        public static string ToSql(this OnDeleteAction action) {
+            switch (action) {
+                case OnDeleteAction.Deny:
+                    return "RESTRICT";
+                case OnDeleteAction.Nullify:
+                    return "SET NULL";
+                case OnDeleteAction.Cascade:
+                    return "CASCADE";
+                default:
+                    return "NO ACTION";
+            }
+        }
     }
 }
