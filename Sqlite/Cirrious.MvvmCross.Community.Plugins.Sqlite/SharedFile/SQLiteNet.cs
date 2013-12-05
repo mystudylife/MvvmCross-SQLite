@@ -146,7 +146,7 @@ namespace Community.SQLite
 
         public bool TimeExecution { get; set; }
 
-        public bool Trace { get; set; }
+        public Action<string> Trace { get; set; }
 
         public bool StoreDateTimeAsTicks { get; private set; }
 
@@ -2057,9 +2057,9 @@ namespace Community.SQLite
 
         public int ExecuteNonQuery()
         {
-            if (_conn.Trace)
+            if (_conn.Trace != null)
             {
-                Debug.WriteLine("Executing: " + this);
+                _conn.Trace("Executing: " + this);
             }
 
             var r = SQLite3.Result.OK;
@@ -2116,9 +2116,9 @@ namespace Community.SQLite
 
         public IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map)
         {
-            if (_conn.Trace)
+            if (_conn.Trace != null)
             {
-                Debug.WriteLine("Executing Query: " + this);
+                _conn.Trace("Executing Query: " + this);
             }
 
             var stmt = Prepare();
@@ -2155,9 +2155,9 @@ namespace Community.SQLite
 
         public T ExecuteScalar<T>()
         {
-            if (_conn.Trace)
+            if (_conn.Trace != null)
             {
-                Debug.WriteLine("Executing Query: " + this);
+                _conn.Trace("Executing Query: " + this);
             }
 
             T val = default(T);
@@ -2444,9 +2444,9 @@ namespace Community.SQLite
 
         public int ExecuteNonQuery(object[] source)
         {
-            if (Connection.Trace)
+            if (Connection.Trace != null)
             {
-                Debug.WriteLine("Executing: " + CommandText);
+                Connection.Trace("Executing: " + CommandText);
             }
 
             var r = SQLite3.Result.OK;

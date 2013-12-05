@@ -240,7 +240,7 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
         bool TimeExecution { get; set; }
 
-        bool Trace { get; set; }
+        Action<string> Trace { get; set; }
 
         bool StoreDateTimeAsTicks { get; }
 
