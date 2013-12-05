@@ -1,0 +1,3 @@
+[submodule "Library/sqlite-net-wp8"]
+	path = Library/sqlite-net-wp8
+	url = https://github.com/peterhuene/sqlite-net-wp8.git

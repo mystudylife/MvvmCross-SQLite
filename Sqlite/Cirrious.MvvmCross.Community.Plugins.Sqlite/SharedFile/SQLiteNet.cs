@@ -50,13 +50,11 @@ using Cirrious.MvvmCross.Community.Plugins.Sqlite;
 using Community.CsharpSqlite;
 using Sqlite3DatabaseHandle = Community.CsharpSqlite.Sqlite3.sqlite3;
 using Sqlite3Statement = Community.CsharpSqlite.Sqlite3.Vdbe;
-/*
 #elif WINDOWS_PHONE
-using Sqlite = SQLite;
-using Sqlite3 = SQLite.SQLite3;
-using Sqlite3DatabaseHandle = System.IntPtr;
-using Sqlite3Statement = System.IntPtr;
-*/
+using Sqlite = Sqlite;
+using Sqlite3 = Sqlite.Sqlite3;
+using Sqlite3DatabaseHandle = Sqlite.Database;
+using Sqlite3Statement = Sqlite.Statement;
 #else
 using System.Runtime.InteropServices;
 using Sqlite3DatabaseHandle = System.IntPtr;
@@ -3256,31 +3254,30 @@ namespace Community.SQLite
             return result;
         }
 #else
-        public static Result Open(string filename, out Sqlite3DatabaseHandle db)
-        {
-#if WINDOWS_PHONE
-            var d = new Sqlite3DatabaseHandle();
-            var toReturn = (Result)Sqlite3.sqlite3_open(filename, ref d);
-            db = d;
-            return toReturn;
+        public static Result Open(string filename, out Sqlite3DatabaseHandle db) {
+#if WINDOWS_PHONE && USE_CSHARP_SQLITE
+			var d = new Sqlite3DatabaseHandle();
+			var toReturn = (Result)Sqlite3.sqlite3_open(filename, ref d);
+			db = d;
+			return toReturn;
 #else
             return (Result)Sqlite3.sqlite3_open(filename, out db);
 #endif
-        }
+		}
 
         public static Result Open(string filename, out Sqlite3DatabaseHandle db, int flags, IntPtr zVfs)
         {
 #if USE_WP8_NATIVE_SQLITE
             return (Result)Sqlite3.sqlite3_open_v2(filename, out db, flags, "");
 #else
-#if WINDOWS_PHONE
+    #if WINDOWS_PHONE
             var d = new Sqlite3DatabaseHandle();
             var toReturn = (Result)Sqlite3.sqlite3_open_v2(filename, ref d, flags, null);
             db = d;
             return toReturn;
-#else
+    #else
             return (Result)Sqlite3.sqlite3_open_v2(filename, out db, flags, null);
-#endif
+    #endif
 #endif
         }
 
@@ -3327,7 +3324,7 @@ namespace Community.SQLite
 
         public static Result Finalize(Sqlite3Statement stmt)
         {
-#if WINDOWS_PHONE
+#if WINDOWS_PHONE && USE_CSHARP_SQLITE
             return (Result)Sqlite3.sqlite3_finalize(ref stmt);
 #else
             return (Result)Sqlite3.sqlite3_finalize(stmt);
@@ -3450,6 +3447,11 @@ namespace Community.SQLite
         public static byte[] ColumnByteArray(Sqlite3Statement stmt, int index)
         {
             return ColumnBlob(stmt, index);
+        }
+        
+        public static Result EnableLoadExtension(Sqlite3DatabaseHandle db, int onoff)
+        {
+            return (Result)Sqlite3.sqlite3_enable_load_extension(db, onoff);
         }
 #endif
 
