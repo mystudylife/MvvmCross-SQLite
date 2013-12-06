@@ -2071,7 +2071,7 @@ namespace Community.SQLite
                 int rowsAffected = SQLite3.Changes(_conn.Handle);
                 return rowsAffected;
             }
-            else if (r == SQLite3.Result.Error)
+            else if (r == SQLite3.Result.Error || r == SQLite3.Result.Constraint)
             {
                 string msg = SQLite3.GetErrmsg(_conn.Handle);
                 throw SQLiteException.New(r, msg);
