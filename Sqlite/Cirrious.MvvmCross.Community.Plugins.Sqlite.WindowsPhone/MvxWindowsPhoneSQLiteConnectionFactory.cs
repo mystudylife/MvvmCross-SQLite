@@ -6,6 +6,8 @@
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 
 using System.IO;
+using System.Windows;
+using Windows.Storage;
 using Community.SQLite;
 
 
@@ -30,7 +32,7 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite.WindowsPhone
 		public ISQLiteConnection CreateEx(string address, SQLiteConnectionOptions options = null)
         {
             options = options ?? new SQLiteConnectionOptions();
-            var path = options.BasePath ?? string.Empty;
+            var path = options.BasePath ?? ApplicationData.Current.LocalFolder.Path;
             var filePath = Path.Combine(path, address);
             return new SQLiteConnection(filePath, options.StoreDateTimeAsTicks);
         }
@@ -42,7 +44,7 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite.WindowsPhone
 		public ISQLiteConnectionWithLock GetConnection(string address, SQLiteConnectionOptions options = null) {
 
 			options = options ?? new SQLiteConnectionOptions();
-			var path = options.BasePath ?? string.Empty;
+            var path = options.BasePath ?? ApplicationData.Current.LocalFolder.Path;
 			var filePath = Path.Combine(path, address);
 
 			return this.GetConnection(new SQLiteConnectionString(filePath, options.StoreDateTimeAsTicks));
