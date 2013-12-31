@@ -6,7 +6,6 @@
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 // THIS FILE FULLY ACKNOWLEDGES:
 
-using System.Text;
 using SQLiteNetExtensions.Attributes;
 using SQLiteNetExtensions.Extensions;
 // ReSharper disable all
@@ -188,6 +187,8 @@ namespace Community.SQLite
 
 #if NETFX_CORE
             SQLite3.SetDirectory(/*temp directory type*/2, Windows.Storage.ApplicationData.Current.TemporaryFolder.Path);
+#elif WINDOWS_PHONE && USE_WP8_NATIVE_SQLITE
+            
 #endif
 
             Sqlite3DatabaseHandle handle;
@@ -203,12 +204,17 @@ namespace Community.SQLite
 #endif
 
             Handle = handle;
-            if (r != SQLite3.Result.OK)
-            {
+            if (r != SQLite3.Result.OK) {
                 throw SQLiteException.New(r, String.Format("Could not open database file: {0} ({1})", DatabasePath, r));
             }
             _open = true;
 
+#if WINDOWS_PHONE && USE_WP8_NATIVE_SQLITE
+            // Without this large updates/inserts cause the database to fall
+            // over with the error "Unable to open".
+            this.Execute("PRAGMA temp_store = memory;");
+#endif
+            
             StoreDateTimeAsTicks = storeDateTimeAsTicks;
 
             BusyTimeout = TimeSpan.FromSeconds(0.1);
