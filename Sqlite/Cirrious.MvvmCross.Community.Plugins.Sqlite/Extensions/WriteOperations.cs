@@ -27,6 +27,37 @@ namespace SQLiteNetExtensions.Extensions {
             conn.UpdateInverseForeignKeys(element);
         }
 
+        public static void DeleteWithChildren<T>(this SQLiteConnection conn, T element) {
+            var type = typeof (T);
+            
+            foreach (var relationshipProperty in type.GetRelationshipProperties()) {
+                var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
+
+                if (relationshipAttribute is OneToOneAttribute || relationshipAttribute is OneToManyAttribute) {
+                    
+
+                    var foreignKeyProperty = type.GetForeignKeyProperty(relationshipProperty);
+                    if (foreignKeyProperty != null) {
+                        if (relationshipAttribute.OnDeleteAction == OnDeleteAction.Nullify) {
+                        }
+
+                        EnclosedType enclosedType;
+                        var entityType = relationshipProperty.GetEntityType(out enclosedType);
+                        var destinationPrimaryKeyProperty = entityType.GetPrimaryKey();
+                        Debug.Assert(enclosedType == EnclosedType.None, "ToOne relationships cannot be lists or arrays");
+                        Debug.Assert(destinationPrimaryKeyProperty != null, "Found foreign key but destination Type doesn't have primary key");
+
+                        var relationshipValue = relationshipProperty.GetValue(element, null);
+                        object foreignKeyValue = null;
+                        if (relationshipValue != null) {
+                            foreignKeyValue = destinationPrimaryKeyProperty.GetValue(relationshipValue, null);
+                        }
+                        foreignKeyProperty.SetValue(element, foreignKeyValue, null);
+                    }
+                }
+            }
+        }
+
         private static void RefreshForeignKeys<T>(ref T element) {
             var type = typeof(T);
             foreach (var relationshipProperty in type.GetRelationshipProperties()) {
