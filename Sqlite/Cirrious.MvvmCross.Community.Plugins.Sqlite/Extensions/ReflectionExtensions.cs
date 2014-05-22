@@ -166,10 +166,29 @@ namespace SQLiteNetExtensions.Extensions {
 			};
 		}
 
-		public static List<PropertyInfo> GetRelationshipProperties(this Type type) {
-			return (from property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-					where property.GetAttribute<RelationshipAttribute>() != null
-					select property).ToList();
+        private static readonly object RelationshipPropertiesCacheLock = new object();
+        private static readonly Dictionary<Type, List<PropertyInfo>> RelationshipPropertiesCache = new Dictionary<Type, List<PropertyInfo>>(); 
+
+		public static IEnumerable<PropertyInfo> GetRelationshipProperties(this Type type) {
+            List<PropertyInfo> relationshipProperties;
+
+		    if (RelationshipPropertiesCache.TryGetValue(type, out relationshipProperties)) {
+		        return relationshipProperties.AsEnumerable();
+		    }
+
+		    lock (RelationshipPropertiesCacheLock) {
+                if (RelationshipPropertiesCache.TryGetValue(type, out relationshipProperties)) {
+                    return relationshipProperties.AsEnumerable();
+                }
+
+		        return (
+                    RelationshipPropertiesCache[type] = (
+                        from property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+		                where property.GetAttribute<RelationshipAttribute>() != null
+		                select property
+                    ).ToList()
+                ).AsEnumerable();
+		    }
 		}
 
 		public static PropertyInfo GetPrimaryKey(this Type type) {

@@ -27,7 +27,7 @@ namespace SQLiteNetExtensions.Extensions {
         ///		Warning. This method could cause serious performance
         ///		implications and should only be used for limited sets of data.
         /// </remarks>
-        public static ICollection<T> WithChildren<T>(this ITableQuery<T> query) where T : new() {
+        public static ICollection<T> WithChildren<T>(this ITableQuery<T> query, params string[] relationshipPropertyNames) where T : new() {
             List<T> results = query.ToList();
 
             // ReSharper disable once CompareNonConstrainedGenericWithNull
@@ -38,14 +38,30 @@ namespace SQLiteNetExtensions.Extensions {
             return results;
         }
 
-        public static void SetChildren<T>(this SQLiteConnection conn, IEnumerable<T> elements) where T : new() {
+        public static void SetChildren<T>(this SQLiteConnection conn, IEnumerable<T> elements, params string[] relationshipPropertyNames) where T : new() {
             if (elements is ITableQuery<T>) {
                 throw new InvalidOperationException("Use WithChildren<T> or enumerate the query before calling SetChildren<T>.");
             }
 
             var results = elements as ICollection<T> ?? elements.ToList();
 
-            foreach (var relationshipProperty in typeof(T).GetRelationshipProperties()) {
+            var relationshipProperties = typeof(T).GetRelationshipProperties().ToList();
+
+            if (relationshipPropertyNames != null && relationshipPropertyNames.Any()) {
+                foreach (var propertyName in relationshipPropertyNames) {
+                    if (relationshipProperties.All(p => p.Name != propertyName)) {
+                        throw new ArgumentException(String.Format("Invalid relationship property name '{0}'.", propertyName));
+                    }
+                }
+
+                var toRemove = relationshipProperties.Where(p => !relationshipPropertyNames.Contains(p.Name)).ToList();
+
+                foreach (var p in toRemove) {
+                    relationshipProperties.Remove(p);
+                }
+            }
+
+            foreach (var relationshipProperty in relationshipProperties) {
                 var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
 
                 if (relationshipAttribute is ManyToOneAttribute) {
