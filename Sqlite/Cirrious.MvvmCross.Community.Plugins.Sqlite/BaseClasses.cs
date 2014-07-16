@@ -286,6 +286,12 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         /// </summary>
         int DropTable<T>();
 
+		bool TableExists<T>();
+		
+		bool TableExists(Type ty);
+		
+		bool TableExists(string tableName);
+		
         /// <summary>
         /// Executes a "create table if not exists" on the database. It also
         /// creates any specified indexes on the columns of the table. It uses

@@ -372,7 +372,22 @@ namespace Community.SQLite
 
             return Execute(query);
         }
+		
+		public bool TableExists<T>()
+		{
+            return TableExists(typeof(T));
+		}		
 
+		public bool TableExists(Type ty) 
+		{
+			return TableExists(GetMapping(ty).TableName);
+		}
+
+		public bool TableExists(string tableName)
+		{
+            return ExecuteScalar<int>("select count(*) from [sqlite_master] where type='table' and name='" + tableName + "'") > 0;
+		}
+		
         /// <summary>
         /// Executes a "create table if not exists" on the database. It also
         /// creates any specified indexes on the columns of the table. It uses
@@ -410,19 +425,23 @@ namespace Community.SQLite
                 map = GetMapping(ty, createFlags);
                 _tables.Add(ty.FullName, map);
             }
-            var query = "create table if not exists \"" + map.TableName + "\"(\n";
 
-            var decls = map.Columns.Select(p => Orm.SqlDecl(p, StoreDateTimeAsTicks));
-            var decl = string.Join(",\n", decls.ToArray());
-            query += decl;
-	        query += Orm.SqlForeignKeyDecl(map);
-            query += ")";
+            int count = 0;
 
-            var count = Execute(query);
+            // Pre-check as `create table if not exists` is not returning a consistent value 
+            if (!TableExists(map.TableName)) {
+                var query = "create table if not exists \"" + map.TableName + "\"(\n";
 
-            if (count == 0)
-            { //Possible bug: This always seems to return 0?
-                // Table already exists, migrate it
+                var decls = map.Columns.Select(p => Orm.SqlDecl(p, StoreDateTimeAsTicks));
+                var decl = string.Join(",\n", decls.ToArray());
+
+                query += decl;
+                query += Orm.SqlForeignKeyDecl(map);
+                query += ")";
+
+                count = Execute(query);
+            }
+            else {
                 MigrateTable(map);
             }
 
