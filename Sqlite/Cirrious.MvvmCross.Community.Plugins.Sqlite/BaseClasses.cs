@@ -129,6 +129,37 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         }
     }
 
+    public enum OnDeleteAction
+    {
+        None,
+        /// <summary>
+        ///     Don't allow deleting if the relationship
+        ///     is set.
+        /// </summary>
+        Deny,
+        /// <summary>
+        ///     Set foreign key to null.
+        /// </summary>
+        Nullify,
+        /// <summary>
+        ///     Delete the child entities.
+        /// </summary>
+        Cascade
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    public class ForeignKeyAttribute : IndexedAttribute
+    {
+        public Type ForeignType { get; private set; }
+
+        public OnDeleteAction OnDeleteAction { get; set; }
+
+        public ForeignKeyAttribute(Type foreignType)
+        {
+            ForeignType = foreignType;
+        }
+    }
+
     [AttributeUsage(AttributeTargets.Property)]
     public class IgnoreAttribute : Attribute
     {

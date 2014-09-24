@@ -94,8 +94,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Library\sqlite-net-wp8\Sqlite.vcxproj">
-      <Project>{59B35F6C-E062-4F0E-88D8-13F3F82A24F3}</Project>
+      <Project>{59b35f6c-e062-4f0e-88d8-13f3f82a24f3}</Project>
       <Name>Sqlite</Name>
+      <Private>True</Private>
     </ProjectReference>
     <ProjectReference Include="..\Cirrious.MvvmCross.Community.Plugins.Sqlite\Cirrious.MvvmCross.Community.Plugins.Sqlite.csproj">
       <Project>{72654B8A-5F78-4BDF-BFBB-057DDDF314F1}</Project>

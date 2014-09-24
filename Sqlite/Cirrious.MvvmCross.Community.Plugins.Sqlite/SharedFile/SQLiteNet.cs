@@ -6,8 +6,6 @@
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 // THIS FILE FULLY ACKNOWLEDGES:
 
-using SQLiteNetExtensions.Attributes;
-using SQLiteNetExtensions.Extensions;
 // ReSharper disable all
 //
 // Copyright (c) 2009-2012 Krueger Systems, Inc.
@@ -368,7 +366,7 @@ namespace Community.SQLite
         {
             var map = GetMapping(typeof(T));
 
-            var query = string.Format("drop table if exists \"{0}\"", map.TableName);
+            var query = string.Format("DROP TABLE IF EXISTS [{0}]", map.TableName);
 
             return Execute(query);
         }
@@ -385,7 +383,7 @@ namespace Community.SQLite
 
 		public bool TableExists(string tableName)
 		{
-            return ExecuteScalar<int>("select count(*) from [sqlite_master] where type='table' and name='" + tableName + "'") > 0;
+            return ExecuteScalar<int>("SELECT COUNT(*) FROM [sqlite_master] WHERE type='table' and name='" + tableName + "'") > 0;
 		}
 		
         /// <summary>
@@ -430,7 +428,7 @@ namespace Community.SQLite
 
             // Pre-check as `create table if not exists` is not returning a consistent value 
             if (!TableExists(map.TableName)) {
-                var query = "create table if not exists \"" + map.TableName + "\"(\n";
+                var query = "CREATE TABLE IF NOT EXISTS [" + map.TableName + "](\n";
 
                 var decls = map.Columns.Select(p => Orm.SqlDecl(p, StoreDateTimeAsTicks));
                 var decl = string.Join(",\n", decls.ToArray());
@@ -478,7 +476,7 @@ namespace Community.SQLite
             foreach (var indexName in indexes.Keys)
             {
                 var index = indexes[indexName];
-                var columns = String.Join("\",\"", index.Columns.OrderBy(i => i.Order).Select(i => i.ColumnName).ToArray());
+                var columns = String.Join("],[", index.Columns.OrderBy(i => i.Order).Select(i => i.ColumnName).ToArray());
                 count += CreateIndex(indexName, index.TableName, columns, index.Unique);
             }
 
@@ -494,8 +492,8 @@ namespace Community.SQLite
         /// <param name="unique">Whether the index should be unique</param>
         public int CreateIndex(string indexName, string tableName, string columnName, bool unique = false)
         {
-            const string sqlFormat = "create {2} index if not exists \"{3}\" on \"{0}\"(\"{1}\")";
-            var sql = String.Format(sqlFormat, tableName, columnName, unique ? "unique" : "", indexName);
+            const string sqlFormat = "CREATE{2} INDEX IF NOT EXISTS [{3}] ON [{0}]([{1}])";
+            var sql = String.Format(sqlFormat, tableName, columnName, unique ? " UNIQUE" : "", indexName);
             return Execute(sql);
         }
 
@@ -507,7 +505,7 @@ namespace Community.SQLite
         /// <param name="unique">Whether the index should be unique</param>
         public int CreateIndex(string tableName, string columnName, bool unique = false)
         {
-            return CreateIndex(string.Concat(tableName, "_", columnName.Replace("\",\"", "_")), tableName, columnName, unique);
+            return CreateIndex(string.Concat(tableName, "_", columnName.Replace("],[", "_")), tableName, columnName, unique);
         }
 
         /// <summary>
@@ -544,7 +542,7 @@ namespace Community.SQLite
 
         public List<ColumnInfo> GetTableInfo(string tableName)
         {
-            var query = "pragma table_info(\"" + tableName + "\")";
+            var query = "PRAGMA table_info([" + tableName + "])";
             return Query<ColumnInfo>(query);
         }
 
@@ -571,7 +569,7 @@ namespace Community.SQLite
 
             foreach (var p in toBeAdded)
             {
-                var addCol = "alter table \"" + map.TableName + "\" add column " + Orm.SqlDecl(p, StoreDateTimeAsTicks);
+                var addCol = "ALTER TABLE [" + map.TableName + "] ADD COLUMN " + Orm.SqlDecl(p, StoreDateTimeAsTicks);
                 Execute(addCol);
             }
         }
@@ -924,7 +922,7 @@ namespace Community.SQLite
             {
                 try
                 {
-                    Execute("begin transaction");
+                    Execute("BEGIN TRANSACTION");
                 }
                 catch (Exception ex)
                 {
@@ -978,7 +976,7 @@ namespace Community.SQLite
 
             try
             {
-                Execute("savepoint " + retVal);
+                Execute("SAVEPOINT " + retVal);
             }
             catch (Exception ex)
             {
@@ -1041,12 +1039,12 @@ namespace Community.SQLite
                 {
                     if (Interlocked.Exchange(ref _transactionDepth, 0) > 0)
                     {
-                        Execute("rollback");
+                        Execute("ROLLBACK");
                     }
                 }
                 else
                 {
-                    DoSavePointExecute(savepoint, "rollback to ");
+                    DoSavePointExecute(savepoint, "ROLLBACK TO ");
                 }
             }
             catch (SQLiteException)
@@ -1068,7 +1066,7 @@ namespace Community.SQLite
         /// <param name="savepoint">The name of the savepoint to release. The string should be the result of a call to <see cref="SaveTransactionPoint"/></param>
         public void Release(string savepoint)
         {
-            DoSavePointExecute(savepoint, "release ");
+            DoSavePointExecute(savepoint, "RELEASE ");
         }
 
         void DoSavePointExecute(string savepoint, string cmd)
@@ -1106,7 +1104,7 @@ namespace Community.SQLite
         {
             if (Interlocked.Exchange(ref _transactionDepth, 0) != 0)
             {
-                Execute("commit");
+                Execute("COMMIT");
             }
             // Do nothing on a commit with no open transaction
         }
@@ -1463,8 +1461,8 @@ namespace Community.SQLite
 				ps.Add(pkValue);
 	        }
 
-            var q = string.Format("update \"{0}\" set {1} where {2} = ? ", map.TableName, string.Join(",", (from c in cols
-                                                                                                            select "\"" + c.Name + "\" = ? ").ToArray()), pk.Name);
+            var q = string.Format("UPDATE [{0}] SET {1} WHERE [{2}] = ? ", map.TableName, string.Join(",", (from c in cols
+                                                                                                            select "[" + c.Name + "] = ? ").ToArray()), pk.Name);
             return Execute(q, ps.ToArray());
         }
 
@@ -1507,7 +1505,7 @@ namespace Community.SQLite
             {
                 throw new NotSupportedException("Cannot delete " + map.TableName + ": it has no PK");
             }
-            var q = string.Format("delete from \"{0}\" where \"{1}\" = ?", map.TableName, pk.Name);
+            var q = string.Format("DELETE FROM [{0}] WHERE [{1}] = ?", map.TableName, pk.Name);
             return Execute(q, pk.GetValue(objectToDelete));
         }
 
@@ -1531,7 +1529,7 @@ namespace Community.SQLite
             {
                 throw new NotSupportedException("Cannot delete " + map.TableName + ": it has no PK");
             }
-            var q = string.Format("delete from \"{0}\" where \"{1}\" = ?", map.TableName, pk.Name);
+            var q = string.Format("DELETE FROM [{0}] WHERE [{1}] = ?", map.TableName, pk.Name);
             return Execute(q, primaryKey);
         }
 
@@ -1549,7 +1547,7 @@ namespace Community.SQLite
         public int DeleteAll<T>()
         {
             var map = GetMapping(typeof(T));
-            var query = string.Format("delete from \"{0}\"", map.TableName);
+            var query = string.Format("DELETE FROM [{0}]", map.TableName);
             return Execute(query);
         }
 
@@ -1664,10 +1662,15 @@ namespace Community.SQLite
             TableName = tableAttr != null ? tableAttr.Name : MappedType.Name;
 
 #if !NETFX_CORE
-            var props = MappedType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.SetProperty);
+            var props = MappedType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty).Where(x => x.GetSetMethod(false) != null || x.GetCustomAttribute<ColumnAttribute>() != null);
 #else
             var props = from p in MappedType.GetRuntimeProperties()
-                        where ((p.GetMethod != null && p.GetMethod.IsPublic) || (p.SetMethod != null && p.SetMethod.IsPublic) || (p.GetMethod != null && p.GetMethod.IsStatic) || (p.SetMethod != null && p.SetMethod.IsStatic))
+                        where (
+                            (p.GetMethod != null && (p.GetMethod.IsPublic || p.GetCustomAttribute<ColumnAttribute>() != null)) ||
+                            (p.SetMethod != null && (p.SetMethod.IsPublic || p.GetCustomAttribute<ColumnAttribute>() != null)) ||
+                            (p.GetMethod != null && p.GetMethod.IsStatic) ||
+                            (p.SetMethod != null && p.SetMethod.IsStatic)
+                        )
                         select p;
 #endif
             var cols = new List<Column>();
@@ -1676,7 +1679,7 @@ namespace Community.SQLite
 #if !NETFX_CORE
                 var ignore = p.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0;
 #else
-                var ignore = p.GetCustomAttributes (typeof(IgnoreAttribute), true).Count() > 0;
+                var ignore = p.GetCustomAttributes (typeof(IgnoreAttribute), true).Any();
 #endif
                 if (p.CanWrite && !ignore)
                 {
@@ -1700,12 +1703,12 @@ namespace Community.SQLite
 
             if (PK != null)
             {
-                GetByPrimaryKeySql = string.Format("select * from \"{0}\" where \"{1}\" = ?", TableName, PK.Name);
+                GetByPrimaryKeySql = string.Format("SELECT * FROM [{0}] WHERE [{1}] = ?", TableName, PK.Name);
             }
             else
             {
                 // People should not be calling Get/Find without a PK
-                GetByPrimaryKeySql = string.Format("select * from \"{0}\" limit 1", TableName);
+                GetByPrimaryKeySql = string.Format("SELECT * FROM [{0}] LIMIT 1", TableName);
             }
         }
 
@@ -1780,7 +1783,7 @@ namespace Community.SQLite
             string insertSql;
             if (!cols.Any() && Columns.Count() == 1 && Columns[0].IsAutoInc)
             {
-                insertSql = string.Format("insert {1} into \"{0}\" default values", TableName, extra);
+                insertSql = string.Format("INSERT {1} INTO [{0}] DEFAULT VALUES", TableName, extra);
             }
             else
             {
@@ -1791,9 +1794,9 @@ namespace Community.SQLite
                     cols = InsertOrReplaceColumns;
                 }
 
-                insertSql = string.Format("insert {3} into \"{0}\"({1}) values ({2})", TableName,
+                insertSql = string.Format("INSERT {3} INTO [{0}]({1}) VALUES ({2})", TableName,
                                    string.Join(",", (from c in cols
-                                                     select "\"" + c.Name + "\"").ToArray()),
+                                                     select "[" + c.Name + "]").ToArray()),
                                    string.Join(",", (from c in cols
                                                      select "?").ToArray()), extra);
 
@@ -1836,6 +1839,10 @@ namespace Community.SQLite
 
             public int MaxStringLength { get; private set; }
 
+            public bool IsForeignKey { get;  private set; }
+
+            public ForeignKeyAttribute ForeignKeyInfo { get; private set; }
+
             public Column(PropertyInfo prop, CreateFlags createFlags = CreateFlags.None)
             {
                 var colAttr = (ColumnAttribute)prop.GetCustomAttributes(typeof(ColumnAttribute), true).FirstOrDefault();
@@ -1865,6 +1872,11 @@ namespace Community.SQLite
                 }
                 IsNullable = !IsPK;
                 MaxStringLength = Orm.MaxStringLength(prop);
+
+                var foreignKeyAttr = (ForeignKeyAttribute)prop.GetCustomAttributes(typeof(ForeignKeyAttribute), true).FirstOrDefault();
+
+                IsForeignKey = foreignKeyAttr != null;
+                ForeignKeyInfo = foreignKeyAttr;
             }
 
             public void SetValue(object obj, object val) {
@@ -1898,23 +1910,23 @@ namespace Community.SQLite
 
         public static string SqlDecl(TableMapping.Column p, bool storeDateTimeAsTicks)
         {
-            string decl = "\"" + p.Name + "\" " + SqlType(p, storeDateTimeAsTicks) + " ";
+            string decl = "[" + p.Name + "] " + SqlType(p, storeDateTimeAsTicks) + " ";
 
             if (p.IsPK)
             {
-                decl += "primary key ";
+                decl += "PRIMARY KEY ";
             }
             if (p.IsAutoInc)
             {
-                decl += "autoincrement ";
+                decl += "AUTOINCREMENT ";
             }
             if (!p.IsNullable)
             {
-                decl += "not null ";
+                decl += "NOT NULL ";
             }
             if (!string.IsNullOrEmpty(p.Collation))
             {
-                decl += "collate " + p.Collation + " ";
+                decl += "COLLATE " + p.Collation + " ";
             }
 
             return decl;
@@ -1922,27 +1934,37 @@ namespace Community.SQLite
 
 		#region Foreign Key Quick Hack
 
-		// This is really crap, it's referencing things that are supposed to be standalone extensions
-
 	    public static string SqlForeignKeyDecl(TableMapping tableMapping) {
-			var foreignKeys = 
-#if !NETFX_CORE
-				from p in tableMapping.MappedType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-#else
-				from p in tableMapping.MappedType.GetRuntimeProperties()
-#endif
-				where p.GetAttribute<ForeignKeyAttribute>() != null
-				select p;
+	        var foreignKeyColumns = tableMapping.Columns.Where(x => x.IsForeignKey);
 
 			List<string> decls = new List<string>();
 
-		    foreach (var fk in foreignKeys) {
-			    var attribute = fk.GetAttribute<ForeignKeyAttribute>();
-                
+		    foreach (var col in foreignKeyColumns) {
+                var foreignTableMapping = new TableMapping(col.ForeignKeyInfo.ForeignType);
+
+		        string onDeleteSql;
+
+                switch (col.ForeignKeyInfo.OnDeleteAction) {
+                    case OnDeleteAction.Deny:
+                        onDeleteSql = "RESTRICT";
+                        break;
+                    case OnDeleteAction.Nullify:
+                        onDeleteSql = "SET NULL";
+                        break;
+                    case OnDeleteAction.Cascade:
+                        onDeleteSql = "CASCADE";
+                        break;
+                    default:
+                        onDeleteSql = "NO ACTION";
+                        break;
+                }
+
 				decls.Add(String.Format(
-		            "FOREIGN KEY ({0}) REFERENCES {1}({2}) ON DELETE {3}", fk.GetColumnName(), attribute.ForeignType.GetTableName(),
-		            attribute.ForeignType.GetPrimaryKey().GetColumnName(),
-                    attribute.OnDeleteAction.ToSql()
+                    "FOREIGN KEY ({0}) REFERENCES {1}({2}) ON DELETE {3}",
+                    col.Name,
+                    foreignTableMapping.TableName,
+		            foreignTableMapping.PK.Name,
+                    onDeleteSql
 		        ));
 		    }
 
@@ -1962,24 +1984,24 @@ namespace Community.SQLite
             var clrType = p.ColumnType;
             if (clrType == typeof(Boolean) || clrType == typeof(Byte) || clrType == typeof(UInt16) || clrType == typeof(SByte) || clrType == typeof(Int16) || clrType == typeof(Int32))
             {
-                return "integer";
+                return "INTEGER";
             }
             else if (clrType == typeof(UInt32) || clrType == typeof(Int64) || clrType == typeof(TimeSpan))
             {
-                return "bigint";
+                return "BIGINT";
             }
             else if (clrType == typeof(Single) || clrType == typeof(Double) || clrType == typeof(Decimal))
             {
-                return "float";
+                return "FLOAT";
             }
             else if (clrType == typeof(String))
             {
                 int len = p.MaxStringLength;
-                return "varchar(" + len + ")";
+                return "VARCHAR(" + len + ")";
             }
             else if (clrType == typeof(DateTime))
             {
-                return storeDateTimeAsTicks ? "bigint" : "datetime";
+                return storeDateTimeAsTicks ? "BIGINT" : "DATETIME";
 #if !NETFX_CORE
             }
             else if (clrType.IsEnum)
@@ -1987,15 +2009,15 @@ namespace Community.SQLite
 #else
             } else if (clrType.GetTypeInfo().IsEnum) {
 #endif
-                return "integer";
+                return "INTEGER";
             }
             else if (clrType == typeof(byte[]))
             {
-                return "blob";
+                return "BLOB";
             }
             else if (clrType == typeof(Guid))
             {
-                return "varchar(36)";
+                return "VARCHAR(36)";
             }
             else
             {
@@ -2748,29 +2770,29 @@ namespace Community.SQLite
             }
             else
             {
-                var cmdText = "select " + selectionList + " from \"" + Table.TableName + "\"";
+                var cmdText = "SELECT " + selectionList + " FROM [" + Table.TableName + "]";
                 var args = new List<object>();
                 if (_where != null)
                 {
                     var w = CompileExpr(_where, args);
-                    cmdText += " where " + w.CommandText;
+                    cmdText += " WHERE " + w.CommandText;
                 }
                 if ((_orderBys != null) && (_orderBys.Count > 0))
                 {
-                    var t = string.Join(", ", _orderBys.Select(o => "\"" + o.ColumnName + "\"" + (o.Ascending ? "" : " desc")).ToArray());
-                    cmdText += " order by " + t;
+                    var t = string.Join(", ", _orderBys.Select(o => "[" + o.ColumnName + "]" + (o.Ascending ? "" : " DESC")).ToArray());
+                    cmdText += " ORDER BY " + t;
                 }
                 if (_limit.HasValue)
                 {
-                    cmdText += " limit " + _limit.Value;
+                    cmdText += " LIMIT " + _limit.Value;
                 }
                 if (_offset.HasValue)
                 {
                     if (!_limit.HasValue)
                     {
-                        cmdText += " limit -1 ";
+                        cmdText += " LIMIT -1 ";
                     }
-                    cmdText += " offset " + _offset.Value;
+                    cmdText += " OFFSET " + _offset.Value;
                 }
                 return Connection.CreateCommand(cmdText, args.ToArray());
             }
@@ -2822,30 +2844,30 @@ namespace Community.SQLite
 
                 if (call.Method.Name == "Like" && args.Length == 2)
                 {
-                    sqlCall = "(" + args[0].CommandText + " like " + args[1].CommandText + ")";
+                    sqlCall = "(" + args[0].CommandText + " LIKE " + args[1].CommandText + ")";
                 }
                 else if (call.Method.Name == "Contains" && args.Length == 2)
                 {
-                    sqlCall = "(" + args[1].CommandText + " in " + args[0].CommandText + ")";
+                    sqlCall = "(" + args[1].CommandText + " IN " + args[0].CommandText + ")";
                 }
                 else if (call.Method.Name == "Contains" && args.Length == 1)
                 {
                     if (call.Object != null && call.Object.Type == typeof(string))
                     {
-                        sqlCall = "(" + obj.CommandText + " like ('%' || " + args[0].CommandText + " || '%'))";
+                        sqlCall = "(" + obj.CommandText + " LIKE ('%' || " + args[0].CommandText + " || '%'))";
                     }
                     else
                     {
-                        sqlCall = "(" + args[0].CommandText + " in " + obj.CommandText + ")";
+                        sqlCall = "(" + args[0].CommandText + " IN " + obj.CommandText + ")";
                     }
                 }
                 else if (call.Method.Name == "StartsWith" && args.Length == 1)
                 {
-                    sqlCall = "(" + obj.CommandText + " like (" + args[0].CommandText + " || '%'))";
+                    sqlCall = "(" + obj.CommandText + " LIKE (" + args[0].CommandText + " || '%'))";
                 }
                 else if (call.Method.Name == "EndsWith" && args.Length == 1)
                 {
-                    sqlCall = "(" + obj.CommandText + " like ('%' || " + args[0].CommandText + "))";
+                    sqlCall = "(" + obj.CommandText + " LIKE ('%' || " + args[0].CommandText + "))";
                 }
                 else if (call.Method.Name == "Equals" && args.Length == 1)
                 {
@@ -2853,7 +2875,7 @@ namespace Community.SQLite
                 }
                 else if (call.Method.Name == "ToLower")
                 {
-                    sqlCall = "(lower(" + obj.CommandText + "))";
+                    sqlCall = "(LOWER(" + obj.CommandText + "))";
                 }
                 else
                 {
@@ -2897,7 +2919,7 @@ namespace Community.SQLite
                     // Need to translate it if that column name is mapped
                     //
                     var columnName = Table.FindColumnWithPropertyName(mem.Member.Name).Name;
-                    return new CompileResult { CommandText = "\"" + columnName + "\"" };
+                    return new CompileResult { CommandText = "[" + columnName + "]" };
                 }
                 else
                 {
@@ -3010,9 +3032,9 @@ namespace Community.SQLite
         private string CompileNullBinaryExpression(BinaryExpression expression, CompileResult parameter)
         {
             if (expression.NodeType == ExpressionType.Equal)
-                return "(" + parameter.CommandText + " is null)";
+                return "(" + parameter.CommandText + " IS NULL)";
             else if (expression.NodeType == ExpressionType.NotEqual)
-                return "(" + parameter.CommandText + " is not null)";
+                return "(" + parameter.CommandText + " IS NOT NULL)";
             else
                 throw new NotSupportedException("Cannot compile Null-BinaryExpression with type " + expression.NodeType.ToString());
         }
@@ -3040,7 +3062,7 @@ namespace Community.SQLite
             }
             else if (n == ExpressionType.AndAlso)
             {
-                return "and";
+                return "AND";
             }
             else if (n == ExpressionType.Or)
             {
@@ -3048,7 +3070,7 @@ namespace Community.SQLite
             }
             else if (n == ExpressionType.OrElse)
             {
-                return "or";
+                return "OR";
             }
             else if (n == ExpressionType.Equal)
             {

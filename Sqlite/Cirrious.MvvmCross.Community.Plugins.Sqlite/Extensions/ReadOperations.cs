@@ -146,7 +146,7 @@ namespace SQLiteNetExtensions.Extensions {
             else {
                 var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
                 if (primaryKeyValue != null) {
-                    var query = string.Format("select * from {0} where {1} = ? limit 1", entityType.Name,
+                    var query = string.Format("SELECT * FROM [{0}] WHERE [{1}] = ? LIMIT 1", entityType.Name,
                                               otherEntityForeignKeyProperty.Name);
                     value = conn.Query(tableMapping, query, primaryKeyValue).FirstOrDefault();
                     // Its a OneToOne, take only the first
@@ -214,14 +214,18 @@ namespace SQLiteNetExtensions.Extensions {
             var tableMapping = conn.GetMapping(entityType);
             Debug.Assert(tableMapping != null, "There's no mapping table for OneToMany relationship destination");
 
-            IEnumerable<object> foreignKeyValues = elements.Select(x => {
+            var foreignKeyValues = elements.Select(x => {
                 var fkPropVal = currentEntityForeignKeyProperty.GetValue(x, null);
 
                 return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
             }).Where(x => x != null).Distinct().ToList();
 
+            if (foreignKeyValues.Count == 0) {
+                return;
+            }
+
             var query = String.Format(
-                "select * from \"{0}\" where \"{1}\" IN ({2})",
+                "SELECT * FROM \"{0}\" WHERE \"{1}\" IN ({2})",
                 tableMapping.TableName,
                 otherEntityPrimaryKeyProperty.GetColumnName(),
                 String.Join(",", foreignKeyValues.Select(x => "?"))
@@ -273,7 +277,7 @@ namespace SQLiteNetExtensions.Extensions {
             IEnumerable values = null;
             var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
             if (primaryKeyValue != null) {
-                var query = string.Format("select * from {0} where {1} = ?", entityType.GetTableName(),
+                var query = string.Format("SELECT * FROM [{0}] WHERE [{1}] = ?", entityType.GetTableName(),
                                           otherEntityForeignKeyProperty.GetColumnName());
 
                 var softDeleteSql = GetSoftDeleteFilterSql(entityType);
@@ -321,14 +325,18 @@ namespace SQLiteNetExtensions.Extensions {
 
             var inverseProperty = type.GetInverseProperty(relationshipProperty);
 
-            IEnumerable<object> primaryKeyValues = elements.Select(x => {
+            var primaryKeyValues = elements.Select(x => {
                 var fkPropVal = currentEntityPrimaryKeyProperty.GetValue(x, null);
 
                 return fkPropVal is Guid ? fkPropVal.ToString() : fkPropVal;
             }).Where(x => x != null).Distinct().ToList();
 
+            if (primaryKeyValues.Count == 0) {
+                return;
+            }
+
             var query = String.Format(
-                "select * from \"{0}\" where \"{1}\" IN ({2})",
+                "SELECT * FROM [{0}] WHERE [{1}] IN ({2})",
                 entityType.GetTableName(),
                 otherEntityForeignKeyProperty.GetColumnName(),
                 String.Join(",", primaryKeyValues.Select(x => "?"))
@@ -394,10 +402,10 @@ namespace SQLiteNetExtensions.Extensions {
             var primaryKeyValue = currentEntityPrimaryKeyProperty.GetValue(element, null);
             if (primaryKeyValue != null) {
                 // Obtain the relationship keys
-                var keysQuery = string.Format("select {0} from {1} where {2} = ?", otherEntityForeignKeyProperty.Name,
+                var keysQuery = string.Format("SELECT [{0}] FROM [{1}] WHERE [{2}] = ?", otherEntityForeignKeyProperty.Name,
                                               intermediateType.Name, currentEntityForeignKeyProperty.Name);
 
-                var query = string.Format("select * from {0} where {1} in ({2})", entityType.Name,
+                var query = string.Format("SELECT * FROM [{0}] WHERE [{1}] IN ({2})", entityType.Name,
                                           otherEntityPrimaryKeyProperty.Name, keysQuery);
 
                 var queryResults = conn.Query(tableMapping, query, primaryKeyValue);
@@ -437,10 +445,10 @@ namespace SQLiteNetExtensions.Extensions {
             if (entitySoftDeleteColumn == null) return null;
 
             if (entitySoftDeleteColumn.PropertyType == typeof(DateTime?)) {
-                return String.Format("{0} IS NULL", entitySoftDeleteColumn.GetColumnName());
+                return String.Format("[{0}] IS NULL", entitySoftDeleteColumn.GetColumnName());
             }
             if (entitySoftDeleteColumn.PropertyType == typeof(bool)) {
-                return String.Format("{0} = 0", entitySoftDeleteColumn.GetColumnName());
+                return String.Format("[{0}] = 0", entitySoftDeleteColumn.GetColumnName());
             }
 
             Debug.Assert(true, "SoftDeleteColumn property type must be a nullable datetime or boolean.");

@@ -11,13 +11,18 @@
     <RootNamespace>Cirrious.MvvmCross.Community.Plugins.Sqlite</RootNamespace>
     <AssemblyName>Cirrious.MvvmCross.Community.Plugins.Sqlite</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile>Profile104</TargetFrameworkProfile>
+    <TargetFrameworkProfile>Profile154</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{786C830F-07A1-408B-BD7F-6EE04809D6DB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <ProductVersion>10.0.0</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>4.0</OldToolsVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>True</DebugSymbols>
@@ -47,21 +52,45 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="BaseClasses.cs" />
-    <Compile Include="Extensions\Attributes\ForeignKeyAttribute.cs" />
-    <Compile Include="Extensions\Attributes\ManyToManyAttribute.cs" />
-    <Compile Include="Extensions\Attributes\ManyToOneAttribute.cs" />
-    <Compile Include="Extensions\Attributes\OnDeleteAction.cs" />
-    <Compile Include="Extensions\Attributes\OneToManyAttribute.cs" />
-    <Compile Include="Extensions\Attributes\OneToOneAttribute.cs" />
-    <Compile Include="Extensions\Attributes\RelationshipAttribute.cs" />
-    <Compile Include="Extensions\Attributes\SoftDeleteColumnAttribute.cs" />
-    <Compile Include="Extensions\Attributes\TextBlobAttribute.cs" />
-    <Compile Include="Extensions\ReadOperations.cs" />
-    <Compile Include="Extensions\ReflectionExtensions.cs" />
-    <Compile Include="Extensions\TextBlob\ITextBlobSerializer.cs" />
-    <Compile Include="Extensions\TextBlob\Serializers\JsonBlobSerializer.cs" />
-    <Compile Include="Extensions\TextBlob\TextBlobOperations.cs" />
-    <Compile Include="Extensions\WriteOperations.cs" />
+    <Compile Include="Extensions\Attributes\ManyToManyAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\Attributes\ManyToOneAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\Attributes\OneToManyAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\Attributes\OneToOneAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\Attributes\RelationshipAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\Attributes\SoftDeleteColumnAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\Attributes\TextBlobAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\ReadOperations.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\ReflectionExtensions.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\TextBlob\ITextBlobSerializer.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\TextBlob\Serializers\JsonBlobSerializer.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\TextBlob\TextBlobOperations.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Extensions\WriteOperations.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="PluginLoader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="packages.config" />
