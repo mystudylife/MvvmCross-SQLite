@@ -1644,6 +1644,16 @@ namespace Community.SQLite
 
         public string GetByPrimaryKeySql { get; private set; }
 
+        IColumn ITableMapping.PrimaryKey
+        {
+            get { return this.PK; }
+        }
+
+        IColumn[] ITableMapping.Columns
+        {
+            get { return this.Columns.Cast<IColumn>().ToArray(); }
+        }
+
         Column _autoPk;
         Column[] _insertColumns;
         Column[] _insertOrReplaceColumns;
@@ -1816,7 +1826,7 @@ namespace Community.SQLite
             }
         }
 
-        public class Column
+        public class Column : IColumn
         {
             PropertyInfo _prop;
 
@@ -2160,6 +2170,51 @@ namespace Community.SQLite
         {
             // Can be overridden.
         }
+
+        public IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map, Action<T, int, string, Func<Type, object>> onReadColumn)
+        {
+            if (_conn.Trace != null)
+            {
+                _conn.Trace("Executing Query: " + this);
+            }
+
+            var stmt = Prepare();
+            try
+            {
+                var columnNames = new string[SQLite3.ColumnCount(stmt)];
+
+                for (int i = 0; i < columnNames.Length; i++)
+                {
+                    columnNames[i] = SQLite3.ColumnName16(stmt, i);
+                }
+
+                while (SQLite3.Step(stmt) == SQLite3.Result.Row) 
+                {
+                    var obj = (T)Activator.CreateInstance(((TableMapping)map).MappedType);
+
+                    for (int i = 0; i < columnNames.Length; i++) 
+                    {
+                        var columnName = columnNames[i];
+                        var colType = SQLite3.ColumnType(stmt, i);
+
+                        var index = i;
+
+                        onReadColumn(
+                            obj,
+                            i,
+                            columnName,
+                            clrType => ReadCol(stmt, index, colType, clrType)
+                        );
+                    }
+
+                    yield return obj;
+                }
+            }
+            finally 
+            {
+                SQLite3.Finalize(stmt);
+            }
+        } 
 
         public IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map)
         {

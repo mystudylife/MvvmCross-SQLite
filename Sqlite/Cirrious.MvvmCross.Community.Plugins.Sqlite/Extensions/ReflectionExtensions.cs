@@ -229,5 +229,11 @@ namespace SQLiteNetExtensions.Extensions {
 
 			return column;
 		}
+
+	    public static bool IsNullable(this PropertyInfo p) {
+	        var t = p.PropertyType;
+
+	        return t.IsGenericType && t.GetGenericTypeDefinition() == typeof (Nullable<>);
+	    }
 	}
 }

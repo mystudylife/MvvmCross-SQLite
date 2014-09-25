@@ -199,7 +199,26 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
     public interface ITableMapping
     {
+        Type MappedType { get; }
+
 		string TableName { get; }
+
+        IColumn PrimaryKey { get; }
+
+        IColumn[] Columns { get; }
+    }
+
+    public interface IColumn
+    {
+        string Name { get; }
+
+        string PropertyName { get; }
+
+        Type ColumnType { get; }
+
+        void SetValue(object obj, object val);
+
+        object GetValue(object obj);
     }
 
     public interface ITableQuery<T> : IEnumerable<T> where T : new()
@@ -254,6 +273,8 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         List<T> ExecuteQuery<T>(ITableMapping map);
 
         IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map);
+
+        IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map, Action<T, int, string, Func<Type, object>> onReadColumn);
 
         T ExecuteScalar<T>();
 
