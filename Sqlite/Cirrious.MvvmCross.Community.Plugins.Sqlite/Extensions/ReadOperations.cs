@@ -15,7 +15,7 @@ using SQLiteConnection = Cirrious.MvvmCross.Community.Plugins.Sqlite.ISQLiteConn
 namespace SQLiteNetExtensions.Extensions {
     public static class ReadOperations {
         private static readonly object SqlJoinCacheLock = new object();
-        private static readonly Dictionary<Type, string> SqlJoinCache = new Dictionary<Type, string>(); 
+        private static readonly Dictionary<string, string> SqlJoinCache = new Dictionary<string, string>(); 
 
         /// <remarks>
         ///     Only works one level deep, not recursive (as is the case with the rest of the queries)
@@ -45,7 +45,7 @@ namespace SQLiteNetExtensions.Extensions {
             string sqlText;
 
             lock (SqlJoinCacheLock) {
-                if (!SqlJoinCache.TryGetValue(type, out sqlText)) {
+                if (!SqlJoinCache.TryGetValue(type.FullName, out sqlText)) {
                     var sqlBuilder = new StringBuilder();
 
                     sqlBuilder.AppendFormat("SELECT [{0}].* ", tableMapping.TableName);
@@ -74,9 +74,10 @@ namespace SQLiteNetExtensions.Extensions {
                         );
                     }
 
+                    // TODO: Add Soft deletion checking
                     sqlBuilder.AppendFormat("WHERE [{0}].[{1}] = ?", tableMapping.TableName, tableMapping.PrimaryKey.Name);
 
-                    sqlText = SqlJoinCache[type] = sqlBuilder.ToString();
+                    sqlText = SqlJoinCache[type.FullName] = sqlBuilder.ToString();
                 }
             }
 
