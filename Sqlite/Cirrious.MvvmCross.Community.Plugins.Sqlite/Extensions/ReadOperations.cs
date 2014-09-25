@@ -17,6 +17,9 @@ namespace SQLiteNetExtensions.Extensions {
         private static readonly object SqlJoinCacheLock = new object();
         private static readonly Dictionary<Type, string> SqlJoinCache = new Dictionary<Type, string>(); 
 
+        /// <remarks>
+        ///     Only works one level deep, not recursive (as is the case with the rest of the queries)
+        /// </remarks>
         public static T GetWithChildrenInSingleQuery<T>(this SQLiteConnection conn, object pk) where T : class, new() {
             var type = typeof (T);
             var tableMapping = conn.GetMapping(type);
@@ -51,7 +54,7 @@ namespace SQLiteNetExtensions.Extensions {
                         sqlBuilder.AppendFormat(
                             ", [{0}].* ",
                             r.ForeignTableMapping.TableName
-                            );
+                        );
                     }
 
                     sqlBuilder.AppendFormat("FROM [{0}] ", tableMapping.TableName);
@@ -68,7 +71,7 @@ namespace SQLiteNetExtensions.Extensions {
                             fkProp.GetColumnName(),
                             p.ForeignTableMapping.TableName,
                             p.ForeignTableMapping.PrimaryKey.Name
-                            );
+                        );
                     }
 
                     sqlBuilder.AppendFormat("WHERE [{0}].[{1}] = ?", tableMapping.TableName, tableMapping.PrimaryKey.Name);
@@ -83,6 +86,7 @@ namespace SQLiteNetExtensions.Extensions {
                 (e, joinElements) => {
                     for (int i = 0; i < joinElements.Length; i++) {
                         joinableRelationships[i].Property.SetValue(e, joinElements[i], null);
+                        // TODO: Set inverse properties???
                     }
                 },
                 joinableRelationships.Select(x => x.Property.PropertyType).ToArray()
@@ -107,12 +111,6 @@ namespace SQLiteNetExtensions.Extensions {
             }
 
             return element;
-        }
-
-        private static void SetColumnValue(object obj, ITableMapping mapping, string columnName, Func<Type, object> getColumnValue) {
-            var col = mapping.Columns.Single(x => x.Name == columnName);
-
-            col.SetValue(obj, getColumnValue(col.ColumnType));
         }
 
         public static T GetWithChildren<T>(this SQLiteConnection conn, object pk) where T : new() {

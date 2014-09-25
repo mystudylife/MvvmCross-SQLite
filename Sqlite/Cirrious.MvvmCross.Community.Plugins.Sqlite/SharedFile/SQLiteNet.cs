@@ -2220,6 +2220,12 @@ namespace Community.SQLite
         public IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2, T3>(Action<TElement, T1, T2, T3> mapping) {
             return ExecuteDeferredQuery<TElement>((e, joins) => mapping(e, (T1)joins[0], (T2)joins[1], (T3)joins[2]), typeof(T1), typeof(T2), typeof(T3));
         }
+        public IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2, T3, T4>(Action<TElement, T1, T2, T3, T4> mapping) {
+            return ExecuteDeferredQuery<TElement>((e, joins) => mapping(e, (T1)joins[0], (T2)joins[1], (T3)joins[2], (T4)joins[3]), typeof(T1), typeof(T2), typeof(T3), typeof(T4));
+        }
+        public IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2, T3, T4, T5>(Action<TElement, T1, T2, T3, T4, T5> mapping) {
+            return ExecuteDeferredQuery<TElement>((e, joins) => mapping(e, (T1)joins[0], (T2)joins[1], (T3)joins[2], (T4)joins[3], (T5)joins[4]), typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5));
+        }
 
         public IEnumerable<T> ExecuteDeferredQuery<T>(Action<T, object[]> mapping, params Type[] types) {
 
