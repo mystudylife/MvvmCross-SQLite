@@ -72,9 +72,14 @@ namespace SQLiteNetExtensions.Extensions {
                             p.ForeignTableMapping.TableName,
                             p.ForeignTableMapping.PrimaryKey.Name
                         );
+
+                        var softDeleteFilterSql = GetSoftDeleteFilterSql(p.ForeignTableMapping.MappedType);
+
+                        if (softDeleteFilterSql != null) {
+                            sqlBuilder.AppendFormat("AND [{0}].{1} ", p.ForeignTableMapping.TableName, softDeleteFilterSql);
+                        }
                     }
 
-                    // TODO: Add Soft deletion checking
                     sqlBuilder.AppendFormat("WHERE [{0}].[{1}] = ?", tableMapping.TableName, tableMapping.PrimaryKey.Name);
 
                     sqlText = SqlJoinCache[type.FullName] = sqlBuilder.ToString();
