@@ -2254,7 +2254,6 @@ namespace Community.SQLite
 
                         if (i < tableColumnIndex) {
                             cols[i] = t.FindColumn(name);
-                            _conn.Trace(i + " " + cols[i].Name);
                             break;
                         }
                     }
