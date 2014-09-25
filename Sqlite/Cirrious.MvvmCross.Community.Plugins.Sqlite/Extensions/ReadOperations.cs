@@ -14,115 +14,95 @@ using SQLiteConnection = Cirrious.MvvmCross.Community.Plugins.Sqlite.ISQLiteConn
 
 namespace SQLiteNetExtensions.Extensions {
     public static class ReadOperations {
+        private static readonly object SqlJoinCacheLock = new object();
+        private static readonly Dictionary<Type, string> SqlJoinCache = new Dictionary<Type, string>(); 
+
         public static T GetWithChildrenInSingleQuery<T>(this SQLiteConnection conn, object pk) where T : class, new() {
             var type = typeof (T);
             var tableMapping = conn.GetMapping(type);
 
-            var relationshipProperties = type.GetRelationshipProperties();
-
-            var singleRelationshipProperties = (
+            var relationships = (
                 from p in type.GetRelationshipProperties()
-                let attr = (RelationshipAttribute)p.GetCustomAttributes(true).FirstOrDefault(x => x is OneToOneAttribute || x is ManyToOneAttribute)
-                where (
-                    attr != null
-                )
                 select new {
                     Property = p,
-                    Attribute = attr,
-                    ForeignTableMapping = conn.GetMapping(p.PropertyType)
+                    Attribute = (RelationshipAttribute)p.GetCustomAttributes(typeof (RelationshipAttribute), true)[0]
                 }
             ).ToList();
 
-            var tables = new List<ITableMapping> {
-                tableMapping
-            };
-            var columnToTableIndexes = new List<int>();
+            var joinableRelationships = (
+                from p in relationships
+                where p.Attribute is OneToOneAttribute || p.Attribute is ManyToOneAttribute
+                select new {
+                    Property = p.Property,
+                    Attribute = p.Attribute,
+                    ForeignTableMapping = conn.GetMapping(p.Property.PropertyType)
+                }
+            ).ToList();
 
-            for (int i = 0; i < tableMapping.Columns.Length; i++) {
-                columnToTableIndexes.Add(0);
-            }
+            string sqlText;
 
-            for (int i = 0; i < singleRelationshipProperties.Count; i++) {
-                var foreignTableMapping = singleRelationshipProperties[i].ForeignTableMapping;
+            lock (SqlJoinCacheLock) {
+                if (!SqlJoinCache.TryGetValue(type, out sqlText)) {
+                    var sqlBuilder = new StringBuilder();
 
-                tables.Add(foreignTableMapping);
+                    sqlBuilder.AppendFormat("SELECT [{0}].* ", tableMapping.TableName);
 
-                for (int j = 0; j < foreignTableMapping.Columns.Length; j++) {
-                    columnToTableIndexes.Add(i + 1);
+                    foreach (var r in joinableRelationships) {
+                        sqlBuilder.AppendFormat(
+                            ", [{0}].* ",
+                            r.ForeignTableMapping.TableName
+                            );
+                    }
+
+                    sqlBuilder.AppendFormat("FROM [{0}] ", tableMapping.TableName);
+
+                    foreach (var p in joinableRelationships) {
+                        var fkProp = type.GetForeignKeyProperty(p.Property);
+
+                        sqlBuilder.Append(fkProp.IsNullable() ? "LEFT OUTER" : "INNER");
+
+                        sqlBuilder.AppendFormat(
+                            " JOIN [{0}] ON [{1}].[{2}] = [{3}].[{4}] ",
+                            p.ForeignTableMapping.TableName,
+                            tableMapping.TableName,
+                            fkProp.GetColumnName(),
+                            p.ForeignTableMapping.TableName,
+                            p.ForeignTableMapping.PrimaryKey.Name
+                            );
+                    }
+
+                    sqlBuilder.AppendFormat("WHERE [{0}].[{1}] = ?", tableMapping.TableName, tableMapping.PrimaryKey.Name);
+
+                    sqlText = SqlJoinCache[type] = sqlBuilder.ToString();
                 }
             }
 
-            var sqlBuilder = new StringBuilder("SELECT ");
-
-            for (int i = 0; i < tables.Count; i++) {
-                var table = tables[i];
-
-                sqlBuilder.AppendFormat("[{0}].*{1} ", table.TableName, i < (tables.Count - 1) ? "," : String.Empty);
-            }
-
-            sqlBuilder.AppendFormat(" FROM {0} ", type.GetTableName());
-
-            foreach (var p in singleRelationshipProperties) {
-                var fkProp = type.GetForeignKeyProperty(p.Property);
-
-                if (fkProp.IsNullable()) {
-                    sqlBuilder.Append("LEFT OUTER");
-                }
-                else {
-                    sqlBuilder.Append("INNER");
-                }
-
-                sqlBuilder.AppendFormat(
-                    " JOIN [{0}] ON [{1}].[{2}] = [{3}].[{4}] ",
-                    p.ForeignTableMapping.TableName,
-                    tableMapping.TableName,
-                    fkProp.GetColumnName(),
-                    p.ForeignTableMapping.TableName,
-                    p.ForeignTableMapping.PrimaryKey.Name
-                );
-            }
-
-            sqlBuilder.AppendFormat("WHERE [{0}].[{1}] = ?", tableMapping.TableName, tableMapping.PrimaryKey.Name);
-
-            var cmd = conn.CreateCommand(sqlBuilder.ToString(), pk);
-
+            var cmd = conn.CreateCommand(sqlText, pk);
+            
             var element = cmd.ExecuteDeferredQuery<T>(
-                tableMapping,
-                (obj, i, columnName, getColumnValue) => {
-                    if (i < tableMapping.Columns.Length) {
-                        SetColumnValue(obj, tableMapping, columnName, getColumnValue);
+                (e, joinElements) => {
+                    for (int i = 0; i < joinElements.Length; i++) {
+                        joinableRelationships[i].Property.SetValue(e, joinElements[i], null);
                     }
-                    else {
-                        var foreignMapping = singleRelationshipProperties[columnToTableIndexes[i] - 1];
-
-                        var foreignObj = foreignMapping.Property.GetValue(obj, null);
-
-                        if (foreignObj == null) {
-                            foreignObj = Activator.CreateInstance(foreignMapping.Property.PropertyType);
-
-                            foreignMapping.Property.SetValue(obj, foreignObj, null);
-                        }
-
-                        SetColumnValue(foreignObj, foreignMapping.ForeignTableMapping, columnName, getColumnValue);
-                    }
-                }
+                },
+                joinableRelationships.Select(x => x.Property.PropertyType).ToArray()
             ).SingleOrDefault();
-
+            
             if (element == null) {
                 return null;
             }
 
-            foreach (var relationshipProperty in relationshipProperties) {
-                var relationshipAttribute = relationshipProperty.GetAttribute<RelationshipAttribute>();
+            foreach (var relationshipProperty in relationships) {
+                var relationshipAttribute = relationshipProperty.Attribute;
 
                 if (relationshipAttribute is OneToManyAttribute) {
-                    conn.GetOneToManyChildren(ref element, relationshipProperty);
+                    conn.GetOneToManyChildren(ref element, relationshipProperty.Property);
                 }
                 else if (relationshipAttribute is ManyToManyAttribute) {
-                    conn.GetManyToManyChildren(ref element, relationshipProperty);
+                    conn.GetManyToManyChildren(ref element, relationshipProperty.Property);
                 }
                 else if (relationshipAttribute is TextBlobAttribute) {
-                    TextBlobOperations.GetTextBlobChild(ref element, relationshipProperty);
+                    TextBlobOperations.GetTextBlobChild(ref element, relationshipProperty.Property);
                 }
             }
 

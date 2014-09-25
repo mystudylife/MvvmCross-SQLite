@@ -274,7 +274,7 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
 
         IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map);
 
-        IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map, Action<T, int, string, Func<Type, object>> onReadColumn);
+        IEnumerable<T> ExecuteDeferredQuery<T>(Action<T, object[]> mapping, params Type[] types);
 
         T ExecuteScalar<T>();
 

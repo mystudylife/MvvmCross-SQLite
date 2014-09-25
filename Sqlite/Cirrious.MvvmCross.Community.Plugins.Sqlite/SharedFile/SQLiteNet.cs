@@ -6,6 +6,7 @@
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 // THIS FILE FULLY ACKNOWLEDGES:
 
+using System.Collections;
 // ReSharper disable all
 //
 // Copyright (c) 2009-2012 Krueger Systems, Inc.
@@ -2171,51 +2172,6 @@ namespace Community.SQLite
             // Can be overridden.
         }
 
-        public IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map, Action<T, int, string, Func<Type, object>> onReadColumn)
-        {
-            if (_conn.Trace != null)
-            {
-                _conn.Trace("Executing Query: " + this);
-            }
-
-            var stmt = Prepare();
-            try
-            {
-                var columnNames = new string[SQLite3.ColumnCount(stmt)];
-
-                for (int i = 0; i < columnNames.Length; i++)
-                {
-                    columnNames[i] = SQLite3.ColumnName16(stmt, i);
-                }
-
-                while (SQLite3.Step(stmt) == SQLite3.Result.Row) 
-                {
-                    var obj = (T)Activator.CreateInstance(((TableMapping)map).MappedType);
-
-                    for (int i = 0; i < columnNames.Length; i++) 
-                    {
-                        var columnName = columnNames[i];
-                        var colType = SQLite3.ColumnType(stmt, i);
-
-                        var index = i;
-
-                        onReadColumn(
-                            obj,
-                            i,
-                            columnName,
-                            clrType => ReadCol(stmt, index, colType, clrType)
-                        );
-                    }
-
-                    yield return obj;
-                }
-            }
-            finally 
-            {
-                SQLite3.Finalize(stmt);
-            }
-        } 
-
         public IEnumerable<T> ExecuteDeferredQuery<T>(ITableMapping map)
         {
             if (_conn.Trace != null)
@@ -2247,6 +2203,102 @@ namespace Community.SQLite
                     }
                     OnInstanceCreated(obj);
                     yield return (T)obj;
+                }
+            }
+            finally
+            {
+                SQLite3.Finalize(stmt);
+            }
+        }
+
+        public IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1>(Action<TElement, T1> mapping) {
+            return ExecuteDeferredQuery<TElement>((e, joins) => mapping(e, (T1) joins[0]), typeof (T1));
+        }
+        public IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2>(Action<TElement, T1, T2> mapping) {
+            return ExecuteDeferredQuery<TElement>((e, joins) => mapping(e, (T1)joins[0], (T2)joins[1]), typeof(T1), typeof(T2));
+        }
+        public IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2, T3>(Action<TElement, T1, T2, T3> mapping) {
+            return ExecuteDeferredQuery<TElement>((e, joins) => mapping(e, (T1)joins[0], (T2)joins[1], (T3)joins[2]), typeof(T1), typeof(T2), typeof(T3));
+        }
+
+        public IEnumerable<T> ExecuteDeferredQuery<T>(Action<T, object[]> mapping, params Type[] types) {
+
+            if (_conn.Trace != null)
+            {
+                _conn.Trace("Executing Query: " + this);
+            }
+
+            var tableMappings = new TableMapping[types.Length + 1];
+
+            tableMappings[0] = _conn.GetMapping(typeof (T));
+
+            for (int i = 0; i < types.Length; i++) {
+                tableMappings[i + 1] = _conn.GetMapping(types[i]);
+            }
+
+            var stmt = Prepare();
+
+            try
+            {
+                var cols = new TableMapping.Column[SQLite3.ColumnCount(stmt)];
+
+                // SQL columns must match mapping exactly else
+                // this won't work.
+                for (int i = 0; i < cols.Length; i++) {
+                    var name = SQLite3.ColumnName16(stmt, i);
+
+                    int tableColumnIndex = 0;
+
+                    foreach (TableMapping t in tableMappings) {
+                        tableColumnIndex += t.Columns.Length;
+
+                        if (i < tableColumnIndex) {
+                            cols[i] = t.FindColumn(name);
+                            _conn.Trace(i + " " + cols[i].Name);
+                            break;
+                        }
+                    }
+                }
+
+                while (SQLite3.Step(stmt) == SQLite3.Result.Row) {
+                    var objs = new object[tableMappings.Length];
+
+                    int tableIndex = 0;
+                    int tableColumnIndex = tableMappings[tableIndex].Columns.Length - 1;
+
+                    for (int i = 0; i < cols.Length; i++) {
+                        if (i > tableColumnIndex) {
+                            tableIndex++;
+                            tableColumnIndex += tableMappings[tableIndex].Columns.Length;
+                        }
+
+                        if (cols[i] == null) {
+                            continue;
+                        }
+
+                        var colType = SQLite3.ColumnType(stmt, i);
+
+                        var val = ReadCol(stmt, i, colType, cols[i].ColumnType);
+
+                        // outer joins
+                        if (val != null) {
+                            object iObj = objs[tableIndex];
+
+                            if (iObj == null) {
+                                iObj = objs[tableIndex] = Activator.CreateInstance(tableMappings[tableIndex].MappedType);
+                            }
+
+                            cols[i].SetValue(iObj, val);
+                        }
+                    }
+
+                    var obj = (T)objs[0];
+
+                    mapping(obj, objs.Skip(1).ToArray());
+
+                    OnInstanceCreated(obj);
+
+                    yield return obj;
                 }
             }
             finally
