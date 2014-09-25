@@ -17,10 +17,5 @@ namespace SQLiteNetExtensions.Attributes
         public string ForeignKey { get; private set; }
         public string InverseProperty { get; private set; }
         public string InverseForeignKey { get; private set; }
-        public virtual CascadeOperation CascadeOperations { get; set; }
-        public bool ReadOnly { get; set; }
-        public bool IsCascadeRead { get { return CascadeOperations.HasFlag(CascadeOperation.CascadeRead); } }
-        public bool IsCascadeInsert { get { return CascadeOperations.HasFlag(CascadeOperation.CascadeInsert); } }
-        public bool IsCascadeDelete { get { return CascadeOperations.HasFlag(CascadeOperation.CascadeDelete); } }
     }
 }

@@ -1,7 +1,11 @@
 ### Fork Info
 This is a fork of the MvvmCross plugin, combined with the extensions from https://bitbucket.org/twincoders/sqlite-net-extensions
 
-There are a number of fixes, some improvements (ie. ManyToOne foreign keys for collections, reducing number of queries to database) and the additional of async connection locking.
+There are a number of fixes and performance improvements including:
+- ManyToOne foreign keys for collections
+- SoftDeletionAttribute (only implemented in ReadOperations.cs when loading related entities)
+- Reducing number of queries to database
+- Addition of async connection locking
 
 The long term goal is to refactor this into manageable chunks whilst expanding sqlite-net's support for foreign keys. It's likely for a while it will stay in a state where it serves our projects needs until we get some time to give it some TLC.
 
