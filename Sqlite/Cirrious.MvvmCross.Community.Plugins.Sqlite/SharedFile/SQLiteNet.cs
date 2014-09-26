@@ -1635,6 +1635,9 @@ namespace Community.SQLite
 
     public class TableMapping : ITableMapping
     {
+        private readonly Dictionary<string, Column> _columnsByPropertyName = new Dictionary<string, Column>();
+        private readonly Dictionary<string, Column> _columnsByColumnName = new Dictionary<string, Column>();
+
         public Type MappedType { get; private set; }
 
         public string TableName { get; private set; }
@@ -1694,7 +1697,12 @@ namespace Community.SQLite
 #endif
                 if (p.CanWrite && !ignore)
                 {
-                    cols.Add(new Column(p, createFlags));
+                    var col = new Column(p, createFlags);
+
+                    cols.Add(col);
+
+                    _columnsByPropertyName.Add(col.PropertyName, col);
+                    _columnsByColumnName.Add(col.Name, col);
                 }
             }
             Columns = cols.ToArray();
@@ -1759,14 +1767,16 @@ namespace Community.SQLite
 
         public Column FindColumnWithPropertyName(string propertyName)
         {
-            var exact = Columns.FirstOrDefault(c => c.PropertyName == propertyName);
-            return exact;
+            Column col;
+            _columnsByPropertyName.TryGetValue(propertyName, out col);
+            return col;
         }
 
         public Column FindColumn(string columnName)
         {
-            var exact = Columns.FirstOrDefault(c => c.Name == columnName);
-            return exact;
+            Column col;
+            _columnsByColumnName.TryGetValue(columnName, out col);
+            return col;
         }
 
         PreparedSqlLiteInsertCommand _insertCommand;
