@@ -282,6 +282,13 @@ namespace Cirrious.MvvmCross.Community.Plugins.Sqlite
         IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2, T3, T4>(Action<TElement, T1, T2, T3, T4> mapping);
         IEnumerable<TElement> ExecuteDeferredQuery<TElement, T1, T2, T3, T4, T5>(Action<TElement, T1, T2, T3, T4, T5> mapping);
 
+        IEnumerable<TResult> ExecuteDeferredQuery<TResult>(Func<object[], TResult> mapping, params Type[] types);
+        IEnumerable<TResult> ExecuteDeferredQuery<T1, TResult>(Func<T1, TResult> mapping);
+        IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, TResult>(Func<T1, T2, TResult> mapping);
+        IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, T3, TResult>(Func<T1, T2, T3, TResult> mapping);
+        IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, T3, T4, TResult>(Func<T1, T2, T3, T4, TResult> mapping);
+        IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, T3, T4, T5, TResult>(Func<T1, T2, T3, T4, T5, TResult> mapping);
+
         T ExecuteScalar<T>();
 
         void Bind(string name, object val);

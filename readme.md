@@ -6,7 +6,9 @@ There are a number of fixes and performance improvements including:
 - SoftDeletionAttribute (only implemented in ReadOperations.cs when loading related entities)
 - Reducing number of queries to database
 - Addition of async connection locking
-- Added [`ExecuteDeferredQuery`](https://github.com/mystudylife/MvvmCross-SQLite/blob/experimental/Sqlite/Cirrious.MvvmCross.Community.Plugins.Sqlite/SharedFile/SQLiteNet.cs#L2240) overload that allows a single row to be mapped to multiple objects.
+- Added 2 [`ExecuteDeferredQuery`](https://github.com/mystudylife/MvvmCross-SQLite/blob/experimental/Sqlite/Cirrious.MvvmCross.Community.Plugins.Sqlite/SharedFile/SQLiteNet.cs#L2240) overloads that allow:
+  - Table joins to be mapped in a single query
+  - Rows to be mapped to a non-table entity
 - Added [`GetWithChildrenInSingleQuery`](https://github.com/mystudylife/MvvmCross-SQLite/blob/experimental/Sqlite/Cirrious.MvvmCross.Community.Plugins.Sqlite/Extensions/ReadOperations.cs#L23) (experimental) extension method that uses the above mentioned method to automatically load related entities in a single query (ManyToOne and OneToOne only).
 
 The long term goal is to refactor this into manageable chunks whilst expanding sqlite-net's support for foreign keys. It's likely for a while it will stay in a state where it serves our projects needs until we get some time to give it some TLC.

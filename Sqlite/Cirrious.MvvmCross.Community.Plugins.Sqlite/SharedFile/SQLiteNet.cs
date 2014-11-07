@@ -2321,6 +2321,57 @@ namespace Community.SQLite
                 SQLite3.Finalize(stmt);
             }
         }
+        public IEnumerable<TResult> ExecuteDeferredQuery<T1, TResult>(Func<T1, TResult> mapping) {
+            return ExecuteDeferredQuery((columns) => mapping((T1)columns[0]), typeof(T1));
+        }
+        public IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, TResult>(Func<T1, T2, TResult> mapping) {
+            return ExecuteDeferredQuery((columns) => mapping((T1)columns[0], (T2)columns[1]), typeof(T1), typeof(T2));
+        }
+        public IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, T3, TResult>(Func<T1, T2, T3, TResult> mapping) {
+            return ExecuteDeferredQuery((columns) => mapping((T1)columns[0], (T2)columns[1], (T3)columns[2]), typeof(T1), typeof(T2), typeof(T3));
+        }
+        public IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, T3, T4, TResult>(Func<T1, T2, T3, T4, TResult> mapping) {
+            return ExecuteDeferredQuery((columns) => mapping((T1)columns[0], (T2)columns[1], (T3)columns[2], (T4)columns[3]), typeof(T1), typeof(T2), typeof(T3), typeof(T4));
+        }
+        public IEnumerable<TResult> ExecuteDeferredQuery<T1, T2, T3, T4, T5, TResult>(Func<T1, T2, T3, T4, T5, TResult> mapping) {
+            return ExecuteDeferredQuery((columns) => mapping((T1)columns[0], (T2)columns[1], (T3)columns[2], (T4)columns[3], (T5)columns[4]), typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5));
+        }
+
+        public IEnumerable<TResult> ExecuteDeferredQuery<TResult>(Func<object[], TResult> mapping, params Type[] types)
+        {
+            if (_conn.Trace != null)
+            {
+                _conn.Trace("Executing Query: " + this);
+            }
+
+            var stmt = Prepare();
+
+            try
+            {
+                var colCount =SQLite3.ColumnCount(stmt);
+
+                if (colCount!= types.Length)
+                {
+                    throw new Exception("Column count does not match number of arguments in mapping function.");
+                }
+
+                while (SQLite3.Step(stmt) == SQLite3.Result.Row) {
+                    var values = new object[colCount];
+
+                    for (int i = 0; i < colCount; i++) {
+                        var colType = SQLite3.ColumnType(stmt, i);
+
+                        values[i] = ReadCol(stmt, i, colType, types[i]);
+                    }
+
+                    yield return mapping(values);
+                }
+            }
+            finally
+            {
+                SQLite3.Finalize(stmt);
+            }
+        }
 
         public T ExecuteScalar<T>()
         {
