@@ -2,7 +2,7 @@
 // (c) Copyright Cirrious Ltd. http://www.cirrious.com
 // MvvmCross is licensed using Microsoft Public License (Ms-PL)
 // Contributions and inspirations noted in readme.md and license.txt
-// 
+//
 // Project Lead - Stuart Lodge, @slodge, me@slodge.com
 // THIS FILE FULLY ACKNOWLEDGES:
 
@@ -10,17 +10,17 @@ using System.Collections;
 // ReSharper disable all
 //
 // Copyright (c) 2009-2012 Krueger Systems, Inc.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -83,9 +83,9 @@ namespace System.Diagnostics
 
         public long ElapsedMilliseconds
         {
-            get 
+            get
             {
-                return (Environment.TickCount - _start)/10000L; 
+                return (Environment.TickCount - _start)/10000L;
             }
         }
     }
@@ -187,7 +187,7 @@ namespace Community.SQLite
 #if NETFX_CORE
             SQLite3.SetDirectory(/*temp directory type*/2, Windows.Storage.ApplicationData.Current.TemporaryFolder.Path);
 #elif WINDOWS_PHONE && USE_WP8_NATIVE_SQLITE
-            
+
 #endif
 
             Sqlite3DatabaseHandle handle;
@@ -213,7 +213,7 @@ namespace Community.SQLite
             // over with the error "Unable to open".
             this.Execute("PRAGMA temp_store = memory;");
 #endif
-            
+
             StoreDateTimeAsTicks = storeDateTimeAsTicks;
 
             BusyTimeout = TimeSpan.FromSeconds(0.1);
@@ -371,13 +371,13 @@ namespace Community.SQLite
 
             return Execute(query);
         }
-		
+
 		public bool TableExists<T>()
 		{
             return TableExists(typeof(T));
-		}		
+		}
 
-		public bool TableExists(Type ty) 
+		public bool TableExists(Type ty)
 		{
 			return TableExists(GetMapping(ty).TableName);
 		}
@@ -386,7 +386,7 @@ namespace Community.SQLite
 		{
             return ExecuteScalar<int>("SELECT COUNT(*) FROM [sqlite_master] WHERE type='table' and name='" + tableName + "'") > 0;
 		}
-		
+
         /// <summary>
         /// Executes a "create table if not exists" on the database. It also
         /// creates any specified indexes on the columns of the table. It uses
@@ -427,7 +427,7 @@ namespace Community.SQLite
 
             int count = 0;
 
-            // Pre-check as `create table if not exists` is not returning a consistent value 
+            // Pre-check as `create table if not exists` is not returning a consistent value
             if (!TableExists(map.TableName)) {
                 var query = "CREATE TABLE IF NOT EXISTS [" + map.TableName + "](\n";
 
@@ -805,7 +805,7 @@ namespace Community.SQLite
         public T Get<T>(object pk) where T : new()
         {
             var map = GetMapping(typeof(T));
-			
+
 			if (pk is Guid) {
 				pk = pk.ToString();
 			}
@@ -1605,7 +1605,7 @@ namespace Community.SQLite
         public string ConnectionString { get; private set; }
         public string DatabasePath { get; private set; }
 		public bool StoreDateTimeAsTicks { get; private set; }
-		
+
 		public SQLiteOpenFlags OpenFlags { get; private set; }
 
 #if NETFX_CORE
@@ -1616,7 +1616,7 @@ namespace Community.SQLite
         {
             ConnectionString = databasePath;
             StoreDateTimeAsTicks = storeDateTimeAsTicks;
-			
+
 #if NETFX_CORE
             DatabasePath = System.IO.Path.Combine (MetroStyleDataPath, databasePath);
 #else
@@ -2501,7 +2501,7 @@ namespace Community.SQLite
                 }
 				else if (value is TimeSpan)
 				{
-					SQLite3.BindInt64(stmt, index, ((TimeSpan)value).Ticks);	
+					SQLite3.BindInt64(stmt, index, ((TimeSpan)value).Ticks);
 				}
                 else if (value is DateTime)
                 {
@@ -2511,7 +2511,7 @@ namespace Community.SQLite
                     }
                     else
                     {
-                        SQLite3.BindText(stmt, index, ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss"), -1, NegativePointer);
+                        SQLite3.BindText(stmt, index, ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture), -1, NegativePointer);
                     }
 #if !NETFX_CORE
                 }
@@ -2576,7 +2576,7 @@ namespace Community.SQLite
                 }
 				else if (clrType == typeof (TimeSpan))
 				{
-					return new TimeSpan(SQLite3.ColumnInt64(stmt, index));	
+					return new TimeSpan(SQLite3.ColumnInt64(stmt, index));
 				}
                 else if (clrType == typeof(DateTime))
                 {
@@ -2587,7 +2587,14 @@ namespace Community.SQLite
                     else
                     {
                         var text = SQLite3.ColumnString(stmt, index);
-                        return DateTime.Parse(text);
+                        DateTime resultDate;
+                        if (!DateTime.TryParseExact(text, "yyyy-MM-dd HH:mm:ss",
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out resultDate)
+                        ) {
+                            resultDate = DateTime.Parse(text);
+                        }
+                        return resultDate;
                     }
 #if !NETFX_CORE
                 }
@@ -3668,7 +3675,7 @@ namespace Community.SQLite
         {
             return ColumnBlob(stmt, index);
         }
-        
+
         public static Result EnableLoadExtension(Sqlite3DatabaseHandle db, int onoff)
         {
             return (Result)Sqlite3.sqlite3_enable_load_extension(db, onoff);
@@ -3746,7 +3753,7 @@ namespace Community.SQLite
 
 		public SQLiteConnectionWithLock(string databasePath, bool storeDateTimeAsTicks = false)
 			: base(databasePath, storeDateTimeAsTicks) {
-			
+
 		}
 		public SQLiteConnectionWithLock(string databasePath, SQLiteOpenFlags openFlags, bool storeDateTimeAsTicks = false)
 			: base(databasePath, openFlags, storeDateTimeAsTicks) {
@@ -3754,7 +3761,7 @@ namespace Community.SQLite
 
 		public SQLiteConnectionWithLock(SQLiteConnectionString connectionString)
 			: base(connectionString.DatabasePath, connectionString.OpenFlags, connectionString.StoreDateTimeAsTicks) {
-			
+
 		}
 
 		public IDisposable Lock() {
